@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WhatsAppStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentModality {
+  AVISTA
+  PARCELADO
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  PARTIALLY_PAID
+}
+
+enum InstallmentStatus {
+  PAID
+  PENDING
+  OVERDUE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum MessageTemplateType {
+  CONFIRMATION
+  REMINDER
+  FOLLOWUP
+}
+
+enum WhatsAppLogStatus {
+  SENT
+  FAILED
+}
+
+model Tenant {
+  id                    String         @id @default(cuid())
+  name                  String
+  email                 String         @unique
+  password              String
+  crn                   String
+  phone                 String
+  clinicName            String?
+  whatsappStatus        WhatsAppStatus @default(DISCONNECTED)
+  whatsappPhone         String?
+  whatsappConnectedAt   DateTime?
+  inactiveDaysThreshold Int            @default(30)
+  defaultDuration       Int            @default(50)
+  workingHours          Json?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  patients         Patient[]
+  appointments     Appointment[]
+  payments         Payment[]
+  installments     Installment[]
+  transactions     Transaction[]
+  serviceTypes     ServiceType[]
+  followUpLogs     FollowUpLog[]
+  whatsAppLogs     WhatsAppLog[]
+  messageTemplates MessageTemplate[]
+
+  @@map("tenants")
+}
+
+model ServiceType {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  defaultPrice Float
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@map("service_types")
+}
+
+model Patient {
+  id                String    @id @default(cuid())
+  tenantId          String
+  name              String
+  cpf               String?
+  birthDate         DateTime?
+  phone             String
+  email             String?
+  address           String?
+  howFoundUs        String?
+  notes             String?
+  isActive          Boolean   @default(true)
+  lastAppointmentAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  payments     Payment[]
+  followUpLogs FollowUpLog[]
+  whatsAppLogs WhatsAppLog[]
+
+  @@map("patients")
+}
+
+model Appointment {
+  id          String            @id @default(cuid())
+  tenantId    String
+  patientId   String
+  scheduledAt DateTime
+  duration    Int               @default(50)
+  status      AppointmentStatus @default(SCHEDULED)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient  Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@map("appointments")
+}
+
+model Payment {
+  id               String          @id @default(cuid())
+  tenantId         String
+  patientId        String
+  appointmentId    String?
+  serviceTypeId    String
+  description      String?
+  totalAmount      Float
+  discountAmount   Float           @default(0)
+  finalAmount      Float
+  modality         PaymentModality
+  installmentCount Int             @default(1)
+  paymentMethod    String
+  status           PaymentStatus   @default(PENDING)
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointment  Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  serviceType  ServiceType   @relation(fields: [serviceTypeId], references: [id])
+  installments Installment[]
+
+  @@map("payments")
+}
+
+model Installment {
+  id                String            @id @default(cuid())
+  paymentId         String
+  tenantId          String
+  installmentNumber Int
+  amount            Float
+  dueDate           DateTime
+  status            InstallmentStatus @default(PENDING)
+  paidAt            DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("installments")
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  tenantId    String
+  type        TransactionType
+  amount      Float
+  description String
+  date        DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model FollowUpLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  patientId   String
+  contactedAt DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("follow_up_logs")
+}
+
+model WhatsAppLog {
+  id           String             @id @default(cuid())
+  tenantId     String
+  patientId    String?
+  messageType  String
+  phoneNumber  String
+  messageText  String
+  status       WhatsAppLogStatus
+  errorMessage String?
+  sentAt       DateTime           @default(now())
+  createdAt    DateTime           @default(now())
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@map("whatsapp_logs")
+}
+
+model MessageTemplate {
+  id        String              @id @default(cuid())
+  tenantId  String
+  type      MessageTemplateType
+  content   String
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type])
+  @@map("message_templates")
+}
