@@ -49,7 +49,7 @@ export default function LoginPage() {
         </div>
         <div className="h-px w-32 mx-auto bg-gradient-to-r from-transparent via-[#22c55e] to-transparent" />
         <p className="text-[#666] text-sm mt-3">
-          Acesse sua conta para continuar
+          Gestão para Consultório
         </p>
       </div>
 

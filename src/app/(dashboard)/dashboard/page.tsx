@@ -3,15 +3,9 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatCardIcon } from "@/components/ui/premium-icon";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
-import {
-  Calendar,
-  Users,
-  UserX,
-  DollarSign,
-  ClipboardCheck,
-  ArrowRight,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 type DashboardData = {
@@ -54,37 +48,32 @@ export default function DashboardPage() {
     {
       title: "Consultas Hoje",
       value: data.todayAppointments.length.toString(),
-      icon: Calendar,
-      color: "text-[#22c55e]",
-      bg: "bg-[#22c55e]/10",
+      icon: "calendar" as const,
+      variant: "green" as const,
     },
     {
       title: "Pacientes Ativos",
       value: data.activePatients.toString(),
-      icon: Users,
-      color: "text-[#3b82f6]",
-      bg: "bg-[#3b82f6]/10",
+      icon: "users" as const,
+      variant: "blue" as const,
     },
     {
       title: "Pacientes Inativos",
       value: data.inactivePatients.toString(),
-      icon: UserX,
-      color: "text-[#f59e0b]",
-      bg: "bg-[#f59e0b]/10",
+      icon: "userX" as const,
+      variant: "amber" as const,
     },
     {
       title: "Receita do Mês",
       value: formatCurrency(data.monthRevenue),
-      icon: DollarSign,
-      color: "text-[#22c55e]",
-      bg: "bg-[#22c55e]/10",
+      icon: "dollar" as const,
+      variant: "emerald" as const,
     },
     {
       title: "Consultas no Mês",
       value: data.monthAppointments.toString(),
-      icon: ClipboardCheck,
-      color: "text-[#8b5cf6]",
-      bg: "bg-[#8b5cf6]/10",
+      icon: "clipboard" as const,
+      variant: "purple" as const,
     },
   ];
 
@@ -109,9 +98,7 @@ export default function DashboardPage() {
                 <span className="text-xs text-[#666] font-medium">
                   {stat.title}
                 </span>
-                <div className={`${stat.bg} p-2 rounded-lg`}>
-                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
+                <StatCardIcon icon={stat.icon} variant={stat.variant} />
               </div>
               <p className="font-outfit text-2xl font-bold text-white tracking-tight">
                 {stat.value}
@@ -129,42 +116,25 @@ export default function DashboardPage() {
             <CardTitle>Atalhos Rápidos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link
-              href="/pacientes?new=true"
-              className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e] hover:border-[#22c55e]/30 transition-colors group"
-            >
-              <span className="text-sm text-[#a1a1a1] group-hover:text-white">
-                Novo Paciente
-              </span>
-              <ArrowRight className="h-4 w-4 text-[#666] group-hover:text-[#22c55e]" />
-            </Link>
-            <Link
-              href="/agendamentos?new=true"
-              className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e] hover:border-[#22c55e]/30 transition-colors group"
-            >
-              <span className="text-sm text-[#a1a1a1] group-hover:text-white">
-                Novo Agendamento
-              </span>
-              <ArrowRight className="h-4 w-4 text-[#666] group-hover:text-[#22c55e]" />
-            </Link>
-            <Link
-              href="/financeiro?new=true"
-              className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e] hover:border-[#22c55e]/30 transition-colors group"
-            >
-              <span className="text-sm text-[#a1a1a1] group-hover:text-white">
-                Registrar Pagamento
-              </span>
-              <ArrowRight className="h-4 w-4 text-[#666] group-hover:text-[#22c55e]" />
-            </Link>
-            <Link
-              href="/inativos"
-              className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e] hover:border-[#22c55e]/30 transition-colors group"
-            >
-              <span className="text-sm text-[#a1a1a1] group-hover:text-white">
-                Follow-up Inativos
-              </span>
-              <ArrowRight className="h-4 w-4 text-[#666] group-hover:text-[#22c55e]" />
-            </Link>
+            {[
+              { label: "Novo Paciente", href: "/pacientes?new=true" },
+              { label: "Novo Agendamento", href: "/agendamentos?new=true" },
+              { label: "Registrar Pagamento", href: "/financeiro?new=true" },
+              { label: "Follow-up Inativos", href: "/inativos" },
+            ].map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#0d0d0d] border border-[#1e1e1e] hover:border-[#22c55e]/20 hover:bg-[#111] transition-all duration-200 group"
+              >
+                <span className="text-sm text-[#a1a1a1] group-hover:text-white transition-colors">
+                  {action.label}
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-[#161616] border border-[#222] flex items-center justify-center group-hover:border-[#22c55e]/30 group-hover:bg-[#22c55e]/5 transition-all duration-200">
+                  <ArrowRight className="h-3.5 w-3.5 text-[#555] group-hover:text-[#4ade80] transition-colors" strokeWidth={1.6} />
+                </div>
+              </Link>
+            ))}
           </CardContent>
         </Card>
 
@@ -189,10 +159,10 @@ export default function DashboardPage() {
                 {data.todayAppointments.map((apt) => (
                   <div
                     key={apt.id}
-                    className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]"
+                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#0d0d0d] border border-[#1e1e1e]"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-[#22c55e]/10 flex items-center justify-center text-[#22c55e] font-bold text-sm">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#22c55e]/15 to-[#16a34a]/5 border border-[#22c55e]/20 flex items-center justify-center text-[#4ade80] font-bold text-sm shadow-[0_0_15px_rgba(34,197,94,0.06)]">
                         {apt.patient.name[0]}
                       </div>
                       <div>

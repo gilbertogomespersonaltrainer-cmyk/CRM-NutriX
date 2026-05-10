@@ -116,7 +116,9 @@ export default function InativosPage() {
       {patients.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
-            <UserX className="h-12 w-12 text-[#333] mx-auto mb-4" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#f59e0b]/10 to-[#d97706]/5 border border-[#f59e0b]/15 flex items-center justify-center">
+              <UserX className="h-7 w-7 text-[#fbbf24]/50" strokeWidth={1.4} />
+            </div>
             <p className="text-[#666]">Nenhum paciente inativo</p>
           </CardContent>
         </Card>
@@ -140,7 +142,7 @@ export default function InativosPage() {
                   className="flex items-center justify-between px-4 py-4 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#f59e0b]/10 flex items-center justify-center text-[#f59e0b] font-bold text-sm">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#f59e0b]/15 to-[#d97706]/5 border border-[#f59e0b]/20 flex items-center justify-center text-[#fbbf24] font-bold text-sm shadow-[0_0_15px_rgba(245,158,11,0.06)]">
                       {patient.name[0]?.toUpperCase()}
                     </div>
                     <div>

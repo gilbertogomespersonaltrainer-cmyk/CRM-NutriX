@@ -38,28 +38,68 @@ async function main() {
     }),
   ]);
 
-  // Templates
+  // Message Templates
   await prisma.messageTemplate.createMany({
     data: [
       {
         tenantId: tenant.id,
         type: "CONFIRMATION",
-        content: "Olá {nome_paciente}! Sua consulta com {nome_nutricionista} está confirmada para {data_consulta} às {hora_consulta}.",
+        content: "Oi {nome_paciente}, tudo bem? Aqui é a {nome_nutricionista} 😊 Passando pra confirmar nosso encontro dia {data_consulta} às {hora_consulta}. Pode confirmar pra mim? Qualquer coisa me avisa que a gente ajusta!",
       },
       {
         tenantId: tenant.id,
         type: "REMINDER",
-        content: "Olá {nome_paciente}! Lembrando que você tem consulta amanhã, {data_consulta} às {hora_consulta} com {nome_nutricionista}.",
+        content: "Oi {nome_paciente}! Só passando pra te lembrar que amanhã tem a nossa consulta, às {hora_consulta} 😊 Tô preparando tudo com carinho pra gente conversar. Te espero!",
+      },
+      {
+        tenantId: tenant.id,
+        type: "REMINDER_2H",
+        content: "Oi {nome_paciente}! Daqui a pouquinho a gente se encontra, hein? Às {hora_consulta} te espero 😊 Se precisar de algo antes, é só me chamar!",
       },
       {
         tenantId: tenant.id,
         type: "FOLLOWUP",
-        content: "Olá {nome_paciente}! Faz um tempo que não nos vemos. Que tal agendar uma consulta com {nome_nutricionista}?",
+        content: "Oi {nome_paciente}, tudo bem com você? Faz um tempinho que a gente não conversa e fiquei curiosa pra saber como você tá, como tá se sentindo, se tá conseguindo manter a rotina... Me conta! 💚",
+      },
+      {
+        tenantId: tenant.id,
+        type: "POST_CONSULTATION",
+        content: "Oi {nome_paciente}! Como você tá? Queria saber como foi esses primeiros dias depois da nossa conversa. Tá conseguindo encaixar as mudanças na rotina? Pode me contar sem medo, tô aqui pra te ajudar no que precisar 😊",
+      },
+      {
+        tenantId: tenant.id,
+        type: "BIRTHDAY",
+        content: "Oi {nome_paciente}! Hoje é seu dia e eu não podia deixar de te desejar tudo de mais lindo! 🎂 Que esse novo ano seja cheio de saúde, conquistas e muita comida gostosa (sim, pode comer bolo! 😄). Um abraço enorme! — {nome_nutricionista} 💚",
+      },
+      {
+        tenantId: tenant.id,
+        type: "REACTIVATION_30",
+        content: "Oi {nome_paciente}, tudo bem? Aqui é a {nome_nutricionista}. Faz um tempinho que a gente não se fala e eu lembrei de você! Como você tá? Tá conseguindo se cuidar? Me conta como andam as coisas 😊",
+      },
+      {
+        tenantId: tenant.id,
+        type: "REACTIVATION_60",
+        content: "Oi {nome_paciente}! Tudo bem com você? Eu tava aqui organizando minha agenda e lembrei de você. Espero que esteja bem! Como tá a rotina? Tô com saudade das nossas conversas 😊 Me dá um oi quando puder!",
+      },
+      {
+        tenantId: tenant.id,
+        type: "REACTIVATION_90",
+        content: "Oi {nome_paciente}, quanto tempo! Tudo bem com você? Tava pensando em você esses dias e queria muito saber como você tá. A gente construiu tanta coisa junta e eu fico torcendo pra você estar bem! Se quiser conversar, tô por aqui 💚",
+      },
+      {
+        tenantId: tenant.id,
+        type: "WELCOME",
+        content: "Oi {nome_paciente}! Que bom ter você aqui 😊 Sou a {nome_nutricionista} e vou te acompanhar nessa jornada. Pode contar comigo pra qualquer dúvida, tá? Seja bem-vindo(a)! 💚",
+      },
+      {
+        tenantId: tenant.id,
+        type: "PLAN_RENEWAL",
+        content: "Oi {nome_paciente}, tudo bem? Passando pra te avisar que seu plano tá chegando ao fim. Queria conversar com você sobre como foi até aqui e o que a gente pode fazer daqui pra frente. Posso te ligar ou prefere que a gente converse por aqui? 😊",
       },
     ],
   });
 
-  // Patients
+  // Patients with stages and tags
   const patients = await Promise.all([
     prisma.patient.create({
       data: {
@@ -71,6 +111,8 @@ async function main() {
         birthDate: new Date("1990-05-15"),
         howFoundUs: "Instagram",
         isActive: true,
+        stage: "ACTIVE",
+        tags: ["emagrecimento", "plano-trimestral"],
         lastAppointmentAt: new Date(),
       },
     }),
@@ -84,6 +126,8 @@ async function main() {
         birthDate: new Date("1985-08-20"),
         howFoundUs: "Indicação",
         isActive: true,
+        stage: "ACTIVE",
+        tags: ["diabetes", "reeducação-alimentar"],
         lastAppointmentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
       },
     }),
@@ -96,6 +140,8 @@ async function main() {
         birthDate: new Date("1995-03-10"),
         howFoundUs: "Google",
         isActive: true,
+        stage: "FIRST_CONSULTATION",
+        tags: ["gestante"],
         lastAppointmentAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
       },
     }),
@@ -106,6 +152,8 @@ async function main() {
         phone: "11988884444",
         howFoundUs: "Indicação",
         isActive: false,
+        stage: "INACTIVE",
+        tags: ["intolerância-lactose"],
         lastAppointmentAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
         notes: "Paciente com restrição a lactose",
       },
@@ -116,13 +164,49 @@ async function main() {
         name: "Lucia Mendes",
         phone: "11988885555",
         email: "lucia@email.com",
+        birthDate: new Date("1988-12-25"),
         isActive: false,
+        stage: "INACTIVE",
+        tags: ["emagrecimento"],
         lastAppointmentAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+      },
+    }),
+    prisma.patient.create({
+      data: {
+        tenantId: tenant.id,
+        name: "Roberto Almeida",
+        phone: "11988886666",
+        email: "roberto@email.com",
+        howFoundUs: "WhatsApp",
+        isActive: false,
+        stage: "LEAD",
+        tags: ["esportista"],
+      },
+    }),
+    prisma.patient.create({
+      data: {
+        tenantId: tenant.id,
+        name: "Patrícia Costa",
+        phone: "11988887777",
+        email: "patricia@email.com",
+        birthDate: new Date("1992-07-03"),
+        howFoundUs: "Indicação",
+        isActive: true,
+        stage: "REACTIVATED",
+        tags: ["emagrecimento", "pós-parto"],
+        lastAppointmentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        lastReactivationAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
       },
     }),
   ]);
 
-  // Appointments for today and upcoming
+  // Set referral: Patrícia was referred by Maria
+  await prisma.patient.update({
+    where: { id: patients[6].id },
+    data: { referredById: patients[0].id },
+  });
+
+  // Appointments
   const today = new Date();
   today.setHours(9, 0, 0, 0);
 
@@ -163,6 +247,21 @@ async function main() {
         scheduledAt: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
         duration: 50,
         status: "COMPLETED",
+      },
+      {
+        tenantId: tenant.id,
+        patientId: patients[3].id,
+        scheduledAt: new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000),
+        duration: 50,
+        status: "COMPLETED",
+      },
+      {
+        tenantId: tenant.id,
+        patientId: patients[6].id,
+        scheduledAt: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000),
+        duration: 50,
+        status: "COMPLETED",
+        postConsultSent: false,
       },
     ],
   });
@@ -261,7 +360,7 @@ async function main() {
     ],
   });
 
-  // Follow-up log
+  // Follow-up logs
   await prisma.followUpLog.create({
     data: {
       tenantId: tenant.id,

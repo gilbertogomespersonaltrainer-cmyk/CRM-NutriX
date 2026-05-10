@@ -9,18 +9,18 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
 import { formatCurrency } from "@/lib/utils";
+import { GlassIcon } from "@/components/ui/premium-icon";
 import {
-  Settings,
-  MessageCircle,
-  Smartphone,
-  Wifi,
-  WifiOff,
   Loader2,
   Plus,
   Save,
   Trash2,
   QrCode,
+  Wifi,
+  WifiOff,
   CheckCircle,
+  MessageCircle,
+  Smartphone,
 } from "lucide-react";
 
 type TenantSettings = {
@@ -202,21 +202,21 @@ export default function ConfiguracoesPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#1e1e1e]">
         {[
-          { key: "profile" as const, label: "Perfil", icon: Settings },
-          { key: "services" as const, label: "Tipos de Serviço", icon: Settings },
-          { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
-          { key: "templates" as const, label: "Templates", icon: MessageCircle },
+          { key: "profile" as const, label: "Perfil", filledIcon: "settings" as const, variant: "blue" as const },
+          { key: "services" as const, label: "Tipos de Serviço", filledIcon: "receipt" as const, variant: "emerald" as const },
+          { key: "whatsapp" as const, label: "WhatsApp", filledIcon: "message" as const, variant: "green" as const },
+          { key: "templates" as const, label: "Templates", filledIcon: "clipboard" as const, variant: "purple" as const },
         ].map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2.5 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
               tab === t.key
-                ? "border-[#22c55e] text-[#22c55e]"
+                ? "border-[#22c55e] text-white"
                 : "border-transparent text-[#666] hover:text-white"
             }`}
           >
-            <t.icon className="h-4 w-4" />
+            <GlassIcon icon={t.filledIcon} variant={t.variant} size="sm" className={tab !== t.key ? "opacity-40" : ""} />
             {t.label}
           </button>
         ))}
@@ -378,8 +378,8 @@ export default function ConfiguracoesPage() {
             <CardContent>
               {whatsappStatus === "CONNECTED" ? (
                 <div className="text-center py-8 space-y-4">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-[#22c55e]/10 flex items-center justify-center">
-                    <CheckCircle className="h-8 w-8 text-[#22c55e]" />
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#22c55e]/15 to-[#16a34a]/5 border border-[#22c55e]/20 shadow-[0_0_30px_rgba(34,197,94,0.1)] flex items-center justify-center">
+                    <CheckCircle className="h-7 w-7 text-[#4ade80]" strokeWidth={1.6} />
                   </div>
                   <div>
                     <p className="text-lg font-medium text-white flex items-center justify-center gap-2">
@@ -417,8 +417,8 @@ export default function ConfiguracoesPage() {
                 </div>
               ) : (
                 <div className="text-center py-8 space-y-4">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-[#ef4444]/10 flex items-center justify-center">
-                    <WifiOff className="h-8 w-8 text-[#ef4444]" />
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#ef4444]/15 to-[#dc2626]/5 border border-[#ef4444]/20 shadow-[0_0_30px_rgba(239,68,68,0.08)] flex items-center justify-center">
+                    <WifiOff className="h-7 w-7 text-[#f87171]" strokeWidth={1.6} />
                   </div>
                   <div>
                     <p className="text-lg font-medium text-white">

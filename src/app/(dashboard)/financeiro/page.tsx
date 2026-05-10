@@ -23,16 +23,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { StatCardIcon, GlassIcon } from "@/components/ui/premium-icon";
 import {
   Plus,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
   Loader2,
-  AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  Receipt,
+  TrendingDown,
 } from "lucide-react";
 
 type Payment = {
@@ -264,31 +261,31 @@ export default function FinanceiroPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-[#666]">Receita</span>
-              <TrendingUp className="h-4 w-4 text-[#22c55e]" />
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-[#666] font-medium">Receita</span>
+              <StatCardIcon icon="trendingUp" variant="green" />
             </div>
-            <p className="font-outfit text-2xl font-bold text-[#22c55e]">
+            <p className="font-outfit text-2xl font-bold text-[#4ade80]">
               {formatCurrency(income)}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-[#666]">Despesas</span>
-              <TrendingDown className="h-4 w-4 text-[#ef4444]" />
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-[#666] font-medium">Despesas</span>
+              <StatCardIcon icon="trendingDown" variant="red" />
             </div>
-            <p className="font-outfit text-2xl font-bold text-[#ef4444]">
+            <p className="font-outfit text-2xl font-bold text-[#f87171]">
               {formatCurrency(expenses)}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-[#666]">Lucro</span>
-              <DollarSign className="h-4 w-4 text-[#3b82f6]" />
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-[#666] font-medium">Lucro</span>
+              <StatCardIcon icon="dollar" variant="blue" />
             </div>
             <p className="font-outfit text-2xl font-bold text-white">
               {formatCurrency(income - expenses)}
@@ -300,20 +297,20 @@ export default function FinanceiroPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#1e1e1e]">
         {[
-          { key: "payments" as const, label: "Pagamentos", icon: Receipt },
-          { key: "expenses" as const, label: "Despesas", icon: TrendingDown },
-          { key: "overdue" as const, label: `Inadimplentes (${overdueInstallments.length})`, icon: AlertTriangle },
+          { key: "payments" as const, label: "Pagamentos", filledIcon: "receipt" as const, variant: "green" as const },
+          { key: "expenses" as const, label: "Despesas", filledIcon: "trendingDown" as const, variant: "red" as const },
+          { key: "overdue" as const, label: `Inadimplentes (${overdueInstallments.length})`, filledIcon: "alert" as const, variant: "amber" as const },
         ].map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2.5 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
               tab === t.key
-                ? "border-[#22c55e] text-[#22c55e]"
+                ? "border-[#22c55e] text-white"
                 : "border-transparent text-[#666] hover:text-white"
             }`}
           >
-            <t.icon className="h-4 w-4" />
+            <GlassIcon icon={t.filledIcon} variant={tab === t.key ? t.variant : "green"} size="sm" className={tab !== t.key ? "opacity-40" : ""} />
             {t.label}
           </button>
         ))}

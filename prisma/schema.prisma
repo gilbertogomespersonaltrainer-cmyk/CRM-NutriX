@@ -46,12 +46,83 @@ enum TransactionType {
 enum MessageTemplateType {
   CONFIRMATION
   REMINDER
+  REMINDER_2H
   FOLLOWUP
+  POST_CONSULTATION
+  BIRTHDAY
+  REACTIVATION_30
+  REACTIVATION_60
+  REACTIVATION_90
+  WELCOME
+  PLAN_RENEWAL
+}
+
+enum PatientStage {
+  LEAD
+  FIRST_CONSULTATION
+  ACTIVE
+  INACTIVE
+  REACTIVATED
 }
 
 enum WhatsAppLogStatus {
   SENT
   FAILED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admin_users")
+}
+
+model Plan {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  priceMonthly  Float
+  maxPatients   Int      @default(50)
+  maxWhatsApp   Int      @default(500)
+  features      String[] @default([])
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id          String             @id @default(cuid())
+  tenantId    String             @unique
+  planId      String
+  status      SubscriptionStatus @default(TRIAL)
+  trialEndsAt DateTime?
+  startsAt    DateTime           @default(now())
+  expiresAt   DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan   Plan   @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
 }
 
 model Tenant {
@@ -71,6 +142,7 @@ model Tenant {
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
+  subscription     Subscription?
   patients         Patient[]
   appointments     Appointment[]
   payments         Payment[]
@@ -101,7 +173,7 @@ model ServiceType {
 }
 
 model Patient {
-  id                String    @id @default(cuid())
+  id                String       @id @default(cuid())
   tenantId          String
   name              String
   cpf               String?
@@ -111,12 +183,20 @@ model Patient {
   address           String?
   howFoundUs        String?
   notes             String?
-  isActive          Boolean   @default(true)
+  isActive          Boolean      @default(true)
+  stage             PatientStage @default(LEAD)
+  tags              String[]     @default([])
+  referredById      String?
   lastAppointmentAt DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  lastReactivationAt DateTime?
+  postConsultSentAt DateTime?
+  birthdaySentYear  Int?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  referredBy   Patient?      @relation("PatientReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals    Patient[]     @relation("PatientReferrals")
   appointments Appointment[]
   payments     Payment[]
   followUpLogs FollowUpLog[]
@@ -126,15 +206,18 @@ model Patient {
 }
 
 model Appointment {
-  id          String            @id @default(cuid())
-  tenantId    String
-  patientId   String
-  scheduledAt DateTime
-  duration    Int               @default(50)
-  status      AppointmentStatus @default(SCHEDULED)
-  notes       String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id               String            @id @default(cuid())
+  tenantId         String
+  patientId        String
+  scheduledAt      DateTime
+  duration         Int               @default(50)
+  status           AppointmentStatus @default(SCHEDULED)
+  notes            String?
+  reminder24hSent  Boolean           @default(false)
+  reminder2hSent   Boolean           @default(false)
+  postConsultSent  Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   patient  Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)

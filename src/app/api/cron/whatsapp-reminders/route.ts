@@ -1,102 +1,307 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTextMessage } from "@/lib/whatsapp";
+import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
 
-export async function GET(req: Request) {
+function authorizeCron(req: Request): boolean {
+  const secret = req.headers.get("authorization")?.replace("Bearer ", "");
+  return secret === process.env.CRON_SECRET;
+}
+
+async function sendTemplateMessage(
+  tenantId: string,
+  patientId: string,
+  phone: string,
+  message: string,
+  messageType: string
+) {
   try {
-    const secret = req.headers.get("authorization")?.replace("Bearer ", "");
-    if (secret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await sendTextMessage(tenantId, phone, message);
+    await prisma.whatsAppLog.create({
+      data: {
+        tenantId,
+        patientId,
+        messageType,
+        phoneNumber: phone,
+        messageText: message,
+        status: "SENT",
+      },
+    });
+    return true;
+  } catch (err) {
+    await prisma.whatsAppLog.create({
+      data: {
+        tenantId,
+        patientId,
+        messageType,
+        phoneNumber: phone,
+        messageText: message,
+        status: "FAILED",
+        errorMessage: err instanceof Error ? err.message : "Erro",
+      },
+    });
+    return false;
+  }
+}
+
+// Lembrete 24h antes da consulta
+async function sendReminders24h() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const start = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      scheduledAt: { gte: start, lt: end },
+      status: "SCHEDULED",
+      reminder24hSent: false,
+    },
+    include: {
+      patient: { select: { id: true, name: true, phone: true } },
+      tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true } },
+    },
+  });
+
+  let sent = 0;
+  for (const apt of appointments) {
+    if (apt.tenant.whatsappStatus !== "CONNECTED") continue;
+
+    const template = await prisma.messageTemplate.findUnique({
+      where: { tenantId_type: { tenantId: apt.tenantId, type: "REMINDER" } },
+    });
+    if (!template) continue;
+
+    const scheduledDate = new Date(apt.scheduledAt);
+    const message = replaceTemplateVars(template.content, {
+      nome_paciente: apt.patient.name,
+      nome_nutricionista: apt.tenant.name,
+      nome_clinica: apt.tenant.clinicName || "",
+      data_consulta: formatDateBR(scheduledDate),
+      hora_consulta: formatTimeBR(scheduledDate),
+    });
+
+    const ok = await sendTemplateMessage(apt.tenantId, apt.patient.id, apt.patient.phone, message, "REMINDER");
+    if (ok) {
+      await prisma.appointment.update({ where: { id: apt.id }, data: { reminder24hSent: true } });
+      sent++;
     }
+  }
+  return sent;
+}
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const startOfTomorrow = new Date(
-      tomorrow.getFullYear(),
-      tomorrow.getMonth(),
-      tomorrow.getDate()
-    );
-    const endOfTomorrow = new Date(startOfTomorrow.getTime() + 24 * 60 * 60 * 1000);
+// Lembrete 2h antes da consulta
+async function sendReminders2h() {
+  const now = new Date();
+  const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  const threeHoursFromNow = new Date(now.getTime() + 3 * 60 * 60 * 1000);
 
-    const appointments = await prisma.appointment.findMany({
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      scheduledAt: { gte: twoHoursFromNow, lt: threeHoursFromNow },
+      status: "SCHEDULED",
+      reminder2hSent: false,
+    },
+    include: {
+      patient: { select: { id: true, name: true, phone: true } },
+      tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true } },
+    },
+  });
+
+  let sent = 0;
+  for (const apt of appointments) {
+    if (apt.tenant.whatsappStatus !== "CONNECTED") continue;
+
+    const template = await prisma.messageTemplate.findUnique({
+      where: { tenantId_type: { tenantId: apt.tenantId, type: "REMINDER_2H" } },
+    });
+    if (!template) continue;
+
+    const scheduledDate = new Date(apt.scheduledAt);
+    const message = replaceTemplateVars(template.content, {
+      nome_paciente: apt.patient.name,
+      nome_nutricionista: apt.tenant.name,
+      nome_clinica: apt.tenant.clinicName || "",
+      data_consulta: formatDateBR(scheduledDate),
+      hora_consulta: formatTimeBR(scheduledDate),
+    });
+
+    const ok = await sendTemplateMessage(apt.tenantId, apt.patient.id, apt.patient.phone, message, "REMINDER_2H");
+    if (ok) {
+      await prisma.appointment.update({ where: { id: apt.id }, data: { reminder2hSent: true } });
+      sent++;
+    }
+  }
+  return sent;
+}
+
+// Mensagem pós-consulta (3 dias depois de consulta COMPLETED)
+async function sendPostConsultation() {
+  const threeDaysAgo = new Date();
+  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+  const fourDaysAgo = new Date();
+  fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      scheduledAt: { gte: fourDaysAgo, lt: threeDaysAgo },
+      status: "COMPLETED",
+      postConsultSent: false,
+    },
+    include: {
+      patient: { select: { id: true, name: true, phone: true } },
+      tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true } },
+    },
+  });
+
+  let sent = 0;
+  for (const apt of appointments) {
+    if (apt.tenant.whatsappStatus !== "CONNECTED") continue;
+
+    const template = await prisma.messageTemplate.findUnique({
+      where: { tenantId_type: { tenantId: apt.tenantId, type: "POST_CONSULTATION" } },
+    });
+    if (!template) continue;
+
+    const message = replaceTemplateVars(template.content, {
+      nome_paciente: apt.patient.name,
+      nome_nutricionista: apt.tenant.name,
+      nome_clinica: apt.tenant.clinicName || "",
+    });
+
+    const ok = await sendTemplateMessage(apt.tenantId, apt.patient.id, apt.patient.phone, message, "POST_CONSULTATION");
+    if (ok) {
+      await prisma.appointment.update({ where: { id: apt.id }, data: { postConsultSent: true } });
+      sent++;
+    }
+  }
+  return sent;
+}
+
+// Mensagem de aniversário
+async function sendBirthday() {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+
+  const patients = await prisma.patient.findMany({
+    where: {
+      isActive: true,
+      birthDate: { not: null },
+      OR: [
+        { birthdaySentYear: null },
+        { birthdaySentYear: { lt: currentYear } },
+      ],
+    },
+    include: {
+      tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true } },
+    },
+  });
+
+  let sent = 0;
+  for (const patient of patients) {
+    if (patient.tenant.whatsappStatus !== "CONNECTED") continue;
+    if (!patient.birthDate) continue;
+
+    const birth = new Date(patient.birthDate);
+    if (birth.getMonth() !== today.getMonth() || birth.getDate() !== today.getDate()) continue;
+
+    const template = await prisma.messageTemplate.findUnique({
+      where: { tenantId_type: { tenantId: patient.tenantId, type: "BIRTHDAY" } },
+    });
+    if (!template) continue;
+
+    const message = replaceTemplateVars(template.content, {
+      nome_paciente: patient.name,
+      nome_nutricionista: patient.tenant.name,
+      nome_clinica: patient.tenant.clinicName || "",
+    });
+
+    const ok = await sendTemplateMessage(patient.tenantId, patient.id, patient.phone, message, "BIRTHDAY");
+    if (ok) {
+      await prisma.patient.update({ where: { id: patient.id }, data: { birthdaySentYear: currentYear } });
+      sent++;
+    }
+  }
+  return sent;
+}
+
+// Reativação escalonada (30/60/90 dias)
+async function sendReactivation() {
+  const now = new Date();
+  const ranges = [
+    { days: 30, type: "REACTIVATION_30" as const },
+    { days: 60, type: "REACTIVATION_60" as const },
+    { days: 90, type: "REACTIVATION_90" as const },
+  ];
+
+  let totalSent = 0;
+
+  for (const range of ranges) {
+    const targetDate = new Date(now.getTime() - range.days * 24 * 60 * 60 * 1000);
+    const windowStart = new Date(targetDate.getTime() - 24 * 60 * 60 * 1000);
+
+    const patients = await prisma.patient.findMany({
       where: {
-        scheduledAt: { gte: startOfTomorrow, lt: endOfTomorrow },
-        status: "SCHEDULED",
+        isActive: false,
+        stage: "INACTIVE",
+        lastAppointmentAt: { gte: windowStart, lt: targetDate },
+        OR: [
+          { lastReactivationAt: null },
+          { lastReactivationAt: { lt: windowStart } },
+        ],
       },
       include: {
-        patient: { select: { name: true, phone: true } },
-        tenant: {
-          select: {
-            id: true,
-            name: true,
-            clinicName: true,
-            whatsappStatus: true,
-          },
-        },
+        tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true } },
       },
     });
 
-    let sent = 0;
-    let failed = 0;
-
-    for (const apt of appointments) {
-      if (apt.tenant.whatsappStatus !== "CONNECTED") continue;
+    for (const patient of patients) {
+      if (patient.tenant.whatsappStatus !== "CONNECTED") continue;
 
       const template = await prisma.messageTemplate.findUnique({
-        where: {
-          tenantId_type: { tenantId: apt.tenantId, type: "REMINDER" },
-        },
+        where: { tenantId_type: { tenantId: patient.tenantId, type: range.type } },
       });
-
       if (!template) continue;
 
-      const scheduledDate = new Date(apt.scheduledAt);
-      const message = template.content
-        .replace(/{nome_paciente}/g, apt.patient.name)
-        .replace(/{nome_nutricionista}/g, apt.tenant.name)
-        .replace(/{nome_clinica}/g, apt.tenant.clinicName || "")
-        .replace(
-          /{data_consulta}/g,
-          scheduledDate.toLocaleDateString("pt-BR")
-        )
-        .replace(
-          /{hora_consulta}/g,
-          scheduledDate.toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        );
+      const message = replaceTemplateVars(template.content, {
+        nome_paciente: patient.name,
+        nome_nutricionista: patient.tenant.name,
+        nome_clinica: patient.tenant.clinicName || "",
+      });
 
-      try {
-        await sendTextMessage(apt.tenantId, apt.patient.phone, message);
-        await prisma.whatsAppLog.create({
-          data: {
-            tenantId: apt.tenantId,
-            patientId: apt.patientId,
-            messageType: "REMINDER",
-            phoneNumber: apt.patient.phone,
-            messageText: message,
-            status: "SENT",
-          },
-        });
-        sent++;
-      } catch (err) {
-        await prisma.whatsAppLog.create({
-          data: {
-            tenantId: apt.tenantId,
-            patientId: apt.patientId,
-            messageType: "REMINDER",
-            phoneNumber: apt.patient.phone,
-            messageText: message,
-            status: "FAILED",
-            errorMessage: err instanceof Error ? err.message : "Erro",
-          },
-        });
-        failed++;
+      const ok = await sendTemplateMessage(patient.tenantId, patient.id, patient.phone, message, range.type);
+      if (ok) {
+        await prisma.patient.update({ where: { id: patient.id }, data: { lastReactivationAt: now } });
+        totalSent++;
       }
     }
+  }
 
-    return NextResponse.json({ sent, failed, total: appointments.length });
+  return totalSent;
+}
+
+export async function GET(req: Request) {
+  try {
+    if (!authorizeCron(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const [reminders24h, reminders2h, postConsult, birthdays, reactivations] =
+      await Promise.all([
+        sendReminders24h(),
+        sendReminders2h(),
+        sendPostConsultation(),
+        sendBirthday(),
+        sendReactivation(),
+      ]);
+
+    return NextResponse.json({
+      reminders24h,
+      reminders2h,
+      postConsult,
+      birthdays,
+      reactivations,
+    });
   } catch {
     return NextResponse.json({ error: "Cron error" }, { status: 500 });
   }

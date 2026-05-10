@@ -172,7 +172,9 @@ function PacientesContent() {
       ) : patients.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
-            <Users className="h-12 w-12 text-[#333] mx-auto mb-4" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#3b82f6]/10 to-[#2563eb]/5 border border-[#3b82f6]/15 flex items-center justify-center">
+              <Users className="h-7 w-7 text-[#60a5fa]/50" strokeWidth={1.4} />
+            </div>
             <p className="text-[#666]">Nenhum paciente encontrado</p>
           </CardContent>
         </Card>
@@ -192,7 +194,7 @@ function PacientesContent() {
                   className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e] hover:border-[#22c55e]/30 transition-colors group"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#22c55e]/10 flex items-center justify-center text-[#22c55e] font-bold text-sm">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#22c55e]/15 to-[#16a34a]/5 border border-[#22c55e]/20 flex items-center justify-center text-[#4ade80] font-bold text-sm shadow-[0_0_15px_rgba(34,197,94,0.06)]">
                       {patient.name[0]?.toUpperCase()}
                     </div>
                     <div>
@@ -211,10 +213,10 @@ function PacientesContent() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-[#22c55e] hover:text-[#16a34a] transition-colors"
+                      className="w-8 h-8 rounded-lg bg-[#161616] border border-[#222] flex items-center justify-center hover:border-[#22c55e]/30 hover:bg-[#22c55e]/5 transition-all duration-200"
                       title="Abrir WhatsApp"
                     >
-                      <MessageCircle className="h-4 w-4" />
+                      <MessageCircle className="h-3.5 w-3.5 text-[#4ade80]" strokeWidth={1.6} />
                     </a>
                     <Badge variant={patient.isActive ? "active" : "inactive"}>
                       {patient.isActive ? "Ativo" : "Inativo"}

@@ -215,7 +215,9 @@ export default function AgendamentosPage() {
       ) : Object.keys(grouped).length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
-            <Calendar className="h-12 w-12 text-[#333] mx-auto mb-4" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#06b6d4]/10 to-[#0891b2]/5 border border-[#06b6d4]/15 flex items-center justify-center">
+              <Calendar className="h-7 w-7 text-[#22d3ee]/50" strokeWidth={1.4} />
+            </div>
             <p className="text-[#666]">Nenhum agendamento neste período</p>
           </CardContent>
         </Card>
@@ -233,7 +235,7 @@ export default function AgendamentosPage() {
                     className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-[#22c55e]/10 flex items-center justify-center text-[#22c55e] font-bold text-sm">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#22c55e]/15 to-[#16a34a]/5 border border-[#22c55e]/20 flex items-center justify-center text-[#4ade80] font-bold text-sm shadow-[0_0_15px_rgba(34,197,94,0.06)]">
                         {apt.patient.name[0]}
                       </div>
                       <div>

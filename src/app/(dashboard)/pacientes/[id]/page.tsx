@@ -23,12 +23,11 @@ import {
   formatPhone,
   daysSince,
 } from "@/lib/utils";
+import { GlassIcon } from "@/components/ui/premium-icon";
 import {
   ArrowLeft,
   Edit,
   MessageCircle,
-  Calendar,
-  DollarSign,
   Loader2,
   UserX,
   UserCheck,
@@ -180,9 +179,12 @@ export default function PatientDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="secondary" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
+        <button
+          onClick={() => router.back()}
+          className="w-9 h-9 rounded-xl bg-[#161616] border border-[#222] flex items-center justify-center hover:border-[#333] hover:bg-[#1a1a1a] transition-all duration-200"
+        >
+          <ArrowLeft className="h-4 w-4 text-[#888]" strokeWidth={1.6} />
+        </button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="font-outfit text-2xl font-bold text-white">
@@ -266,20 +268,20 @@ export default function PatientDetailPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#1e1e1e]">
         {[
-          { key: "appointments" as const, label: "Consultas", icon: Calendar },
-          { key: "payments" as const, label: "Pagamentos", icon: DollarSign },
-          { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
+          { key: "appointments" as const, label: "Consultas", filledIcon: "calendar" as const, variant: "cyan" as const },
+          { key: "payments" as const, label: "Pagamentos", filledIcon: "dollar" as const, variant: "emerald" as const },
+          { key: "whatsapp" as const, label: "WhatsApp", filledIcon: "message" as const, variant: "green" as const },
         ].map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2.5 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
               tab === t.key
-                ? "border-[#22c55e] text-[#22c55e]"
+                ? "border-[#22c55e] text-white"
                 : "border-transparent text-[#666] hover:text-white"
             }`}
           >
-            <t.icon className="h-4 w-4" />
+            <GlassIcon icon={t.filledIcon} variant={t.variant} size="sm" className={tab !== t.key ? "opacity-40" : ""} />
             {t.label}
           </button>
         ))}
