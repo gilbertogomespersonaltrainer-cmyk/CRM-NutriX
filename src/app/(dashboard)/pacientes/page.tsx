@@ -314,7 +314,7 @@ function PacientesContent() {
                 name="notes"
                 value={form.notes}
                 onChange={handleChange}
-                placeholder="Alergias, restrições alimentares, etc."
+                placeholder="Observações gerais sobre o paciente..."
               />
             </div>
             <div className="flex justify-end gap-3 pt-2">
