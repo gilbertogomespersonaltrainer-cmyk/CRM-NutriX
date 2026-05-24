@@ -30,11 +30,13 @@ function formatDate(iso: string) {
 }
 
 const SIGNATURE_KEY = "nutrix_signature";
+const LOGO_KEY = "nutrix_logo";
 
 export default function DocumentosPage() {
   const [tab, setTab] = useState<Tab>("recibo");
   const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [signature, setSignature] = useState<string>("");
+  const [logo, setLogo] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Recibo form
@@ -65,6 +67,8 @@ export default function DocumentosPage() {
 
     const saved = localStorage.getItem(SIGNATURE_KEY);
     if (saved) setSignature(saved);
+    const savedLogo = localStorage.getItem(LOGO_KEY);
+    if (savedLogo) setLogo(savedLogo);
   }, []);
 
   function handleSignatureUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -325,17 +329,23 @@ export default function DocumentosPage() {
               }}
             >
               {/* Header */}
-              <div style={{ borderBottom: "2px solid #16a34a", paddingBottom: "20px", marginBottom: "28px" }}>
-                <h1 style={{ fontSize: "22px", fontWeight: "bold", color: "#15803d", margin: 0, fontFamily: "sans-serif" }}>
-                  {clinicName}
-                </h1>
-                {profissional && (
-                  <p style={{ fontSize: "14px", color: "#555", margin: "4px 0 0", fontFamily: "sans-serif" }}>
-                    {profissional}{crn ? ` · CRN: ${crn}` : ""}
-                  </p>
-                )}
-                {settings?.phone && (
-                  <p style={{ fontSize: "12px", color: "#888", margin: "2px 0 0", fontFamily: "sans-serif" }}>{settings.phone}</p>
+              <div style={{ borderBottom: "2px solid #16a34a", paddingBottom: "20px", marginBottom: "28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px" }}>
+                <div>
+                  <h1 style={{ fontSize: "22px", fontWeight: "bold", color: "#15803d", margin: 0, fontFamily: "sans-serif" }}>
+                    {clinicName}
+                  </h1>
+                  {profissional && (
+                    <p style={{ fontSize: "14px", color: "#555", margin: "4px 0 0", fontFamily: "sans-serif" }}>
+                      {profissional}{crn ? ` · CRN: ${crn}` : ""}
+                    </p>
+                  )}
+                  {settings?.phone && (
+                    <p style={{ fontSize: "12px", color: "#888", margin: "2px 0 0", fontFamily: "sans-serif" }}>{settings.phone}</p>
+                  )}
+                </div>
+                {logo && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={logo} alt="Logo" style={{ maxHeight: "64px", maxWidth: "160px", objectFit: "contain" }} />
                 )}
               </div>
 

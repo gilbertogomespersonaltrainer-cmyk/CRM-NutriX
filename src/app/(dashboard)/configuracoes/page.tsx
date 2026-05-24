@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +49,8 @@ type Template = {
   content: string;
 };
 
+const LOGO_KEY = "nutrix_logo";
+
 export default function ConfiguracoesPage() {
   const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
@@ -56,6 +58,8 @@ export default function ConfiguracoesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"profile" | "services" | "whatsapp" | "templates">("profile");
+  const [logo, setLogo] = useState<string>("");
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // WhatsApp state
   const [whatsappStatus, setWhatsappStatus] = useState("DISCONNECTED");
@@ -64,6 +68,30 @@ export default function ConfiguracoesPage() {
 
   // New service type
   const [newService, setNewService] = useState({ name: "", defaultPrice: "" });
+
+  useEffect(() => {
+    const saved = localStorage.getItem(LOGO_KEY);
+    if (saved) setLogo(saved);
+  }, []);
+
+  function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setLogo(result);
+      localStorage.setItem(LOGO_KEY, result);
+      toast({ title: "Logomarca salva!", variant: "success" });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeLogo() {
+    setLogo("");
+    localStorage.removeItem(LOGO_KEY);
+    toast({ title: "Logomarca removida", variant: "success" });
+  }
 
   const fetchAll = useCallback(async () => {
     const [sRes, stRes, tRes] = await Promise.all([
@@ -280,10 +308,56 @@ export default function ConfiguracoesPage() {
                   />
                 </div>
               </div>
-              <Button type="submit" disabled={saving}>
+                      <Button type="submit" disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Salvar
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Logo */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Logomarca</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-xs text-[#666]">
+                A logomarca será exibida automaticamente nos recibos e atestados gerados.
+              </p>
+              {logo ? (
+                <div className="space-y-3">
+                  <div className="border border-[#1e1e1e] rounded-xl p-4 bg-[#0d0d0d] flex items-center justify-center min-h-[100px]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={logo} alt="Logomarca" className="max-h-20 max-w-[200px] object-contain" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => logoInputRef.current?.click()}>
+                      Trocar logomarca
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={removeLogo}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remover
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="w-full flex flex-col items-center gap-2 p-6 border border-dashed border-[#2a2a2a] rounded-xl text-[#555] hover:text-[#888] hover:border-[#333] transition-colors"
+                >
+                  <Plus className="h-6 w-6" />
+                  <span className="text-sm">Carregar logomarca</span>
+                  <span className="text-xs text-[#444]">PNG, JPG ou SVG · Aparecerá nos documentos</span>
+                </button>
+              )}
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
             </CardContent>
           </Card>
         </form>
