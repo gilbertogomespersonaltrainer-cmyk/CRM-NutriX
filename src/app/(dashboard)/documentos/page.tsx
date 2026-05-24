@@ -381,9 +381,9 @@ export default function DocumentosPage() {
                   <p>
                     Atesto para os devidos fins que o(a) paciente <strong>{atestado.paciente || "___________________________"}</strong>{" "}
                     esteve presente nesta clínica no dia <strong>{atestado.data ? formatDate(atestado.data) : "__/__/____"}</strong>
-                    {atestado.horaEntrada ? `, das <strong>${atestado.horaEntrada}</strong>` : ""}
-                    {atestado.horaSaida ? ` às <strong>${atestado.horaSaida}</strong>` : ""},
-                    para <strong>{atestado.finalidade || "fins de comprovação de consulta nutricional"}</strong>.
+                    {atestado.horaEntrada ? <>, das <strong>{atestado.horaEntrada}</strong></> : ""}
+                    {atestado.horaSaida ? <> às <strong>{atestado.horaSaida}</strong></> : ""},
+                    {" "}para <strong>{atestado.finalidade || "fins de comprovação de consulta nutricional"}</strong>.
                   </p>
                   {atestado.observacoes && (
                     <p style={{ marginTop: "16px" }}>
