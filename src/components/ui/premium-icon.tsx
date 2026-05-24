@@ -171,6 +171,28 @@ function AlertIcon() {
   );
 }
 
+function MessageCircleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" fill={BRAND} fillOpacity={0.25} stroke={BRAND_LIGHT} strokeWidth="1" strokeOpacity={0.6} />
+      <circle cx="9" cy="12" r="0.9" fill={BRAND_LIGHT} fillOpacity={0.85} />
+      <circle cx="12.5" cy="12" r="0.9" fill={BRAND_LIGHT} fillOpacity={0.85} />
+      <circle cx="16" cy="12" r="0.9" fill={BRAND_LIGHT} fillOpacity={0.85} />
+    </svg>
+  );
+}
+
+function FileTextIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" fill={BRAND} fillOpacity={0.2} stroke={BRAND_LIGHT} strokeWidth="1" strokeOpacity={0.55} />
+      <path d="M14 2v6h6" stroke={BRAND_LIGHT} strokeWidth="1" strokeOpacity={0.5} />
+      <rect x="8" y="13" width="8" height="1.5" rx="0.75" fill={BRAND_LIGHT} fillOpacity={0.7} />
+      <rect x="8" y="16.5" width="5" height="1.5" rx="0.75" fill={BRAND_LIGHT} fillOpacity={0.5} />
+    </svg>
+  );
+}
+
 export const filledIcons = {
   calendar: CalendarIcon,
   users: UsersIcon,
@@ -188,6 +210,8 @@ export const filledIcons = {
   refresh: RefreshIcon,
   receipt: ReceiptIcon,
   alert: AlertIcon,
+  messageCircle: MessageCircleIcon,
+  fileText: FileTextIcon,
 } as const;
 
 type FilledIconName = keyof typeof filledIcons;

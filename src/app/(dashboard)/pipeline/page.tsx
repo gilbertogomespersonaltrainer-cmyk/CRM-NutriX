@@ -19,6 +19,7 @@ import {
   EyeOff,
   Pencil,
   Check,
+  Trash2,
 } from "lucide-react";
 
 type PatientStage = "LEAD" | "FIRST_CONSULTATION" | "ACTIVE" | "INACTIVE" | "REACTIVATED";
@@ -36,9 +37,10 @@ type Patient = {
 };
 
 type ColumnConfig = {
-  key: PatientStage;
+  key: string; // PatientStage or "CUSTOM_xxx"
   label: string;
   visible: boolean;
+  isCustom?: boolean;
   filledIcon: "userPlus" | "users" | "userCheck" | "userX" | "refresh";
   variant: "purple" | "blue" | "green" | "red" | "amber";
 };
@@ -88,16 +90,32 @@ function channelStyle(channel: string | null) {
   return { bg: "bg-[#222]", text: "text-[#888]", dot: "bg-[#888]", label: channel };
 }
 
+const CUSTOM_POSITIONS_KEY = "nutrix_custom_positions";
+
+function loadCustomPositions(): Record<string, string> {
+  try {
+    const saved = localStorage.getItem(CUSTOM_POSITIONS_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return {};
+}
+
+function saveCustomPositions(positions: Record<string, string>) {
+  localStorage.setItem(CUSTOM_POSITIONS_KEY, JSON.stringify(positions));
+}
+
 function loadColumns(): ColumnConfig[] {
   try {
     const saved = localStorage.getItem("nutrix_pipeline_columns");
     if (saved) {
       const parsed = JSON.parse(saved) as ColumnConfig[];
-      // Merge with defaults to ensure all keys exist
-      return DEFAULT_COLUMNS.map((def) => {
+      // Merge defaults with saved (preserving label/visible), then append custom cols
+      const merged = DEFAULT_COLUMNS.map((def) => {
         const found = parsed.find((p) => p.key === def.key);
         return found ? { ...def, label: found.label, visible: found.visible } : def;
       });
+      const customCols = parsed.filter((p) => p.isCustom);
+      return [...merged, ...customCols];
     }
   } catch {}
   return DEFAULT_COLUMNS;
@@ -105,6 +123,14 @@ function loadColumns(): ColumnConfig[] {
 
 function saveColumns(cols: ColumnConfig[]) {
   localStorage.setItem("nutrix_pipeline_columns", JSON.stringify(cols));
+}
+
+function generateCustomKey(existing: ColumnConfig[]): string {
+  const customNums = existing
+    .filter((c) => c.isCustom && c.key.startsWith("CUSTOM_"))
+    .map((c) => parseInt(c.key.replace("CUSTOM_", "")) || 0);
+  const max = customNums.length > 0 ? Math.max(...customNums) : 0;
+  return `CUSTOM_${max + 1}`;
 }
 
 // ─── Patient Card ────────────────────────────────────────────────────────────
@@ -133,11 +159,8 @@ function PatientCard({
           >
             {patient.name}
           </Link>
-          <p className="text-xs text-[#555] mt-0.5 truncate">
-            {formatPhone(patient.phone)}
-          </p>
+          <p className="text-xs text-[#555] mt-0.5 truncate">{formatPhone(patient.phone)}</p>
 
-          {/* Canal de origem */}
           {ch && (
             <div className={`inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium border border-transparent ${ch.bg} ${ch.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${ch.dot}`} />
@@ -145,14 +168,10 @@ function PatientCard({
             </div>
           )}
 
-          {/* Tags coloridas */}
           {patient.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {patient.tags.slice(0, 3).map((tag) => (
-                <span
-                  key={tag}
-                  className={`text-[10px] px-1.5 py-0.5 rounded border ${tagColor(tag)}`}
-                >
+                <span key={tag} className={`text-[10px] px-1.5 py-0.5 rounded border ${tagColor(tag)}`}>
                   {tag}
                 </span>
               ))}
@@ -191,7 +210,7 @@ function StageColumn({
   patients: Patient[];
   onDragStart: (e: React.DragEvent, patientId: string) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, stage: PatientStage) => void;
+  onDrop: (e: React.DragEvent, colKey: string) => void;
   isDragOver: boolean;
 }) {
   return (
@@ -207,6 +226,9 @@ function StageColumn({
           <div className="flex items-center gap-2.5">
             <GlassIcon icon={col.filledIcon} variant={col.variant} size="sm" />
             <span className="text-sm font-medium text-white">{col.label}</span>
+            {col.isCustom && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#1e1e1e] text-[#555] border border-[#2a2a2a]">custom</span>
+            )}
           </div>
           <span className="text-xs font-semibold tabular-nums px-2 py-1 rounded-md bg-[#161616] border border-[#222] text-[#888]">
             {patients.length}
@@ -259,23 +281,43 @@ function SettingsModal({
   }
 
   function resetDefaults() {
-    setDraft(DEFAULT_COLUMNS.map((c) => ({ ...c })));
+    const customCols = draft.filter((c) => c.isCustom);
+    setDraft([...DEFAULT_COLUMNS.map((c) => ({ ...c })), ...customCols]);
+  }
+
+  function addCustomColumn() {
+    const newKey = generateCustomKey(draft);
+    const newCol: ColumnConfig = {
+      key: newKey,
+      label: "Nova Coluna",
+      visible: true,
+      isCustom: true,
+      filledIcon: "userPlus",
+      variant: "purple",
+    };
+    setDraft((prev) => [...prev, newCol]);
+    setEditingKey(newKey);
+    setEditValue("Nova Coluna");
+  }
+
+  function deleteCustomColumn(key: string) {
+    setDraft((prev) => prev.filter((c) => c.key !== key));
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl w-full max-w-md mx-4 shadow-2xl">
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl w-full max-w-md mx-4 shadow-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-5 border-b border-[#1e1e1e]">
           <div>
             <h2 className="font-outfit text-lg font-bold text-white">Configurar Pipeline</h2>
-            <p className="text-xs text-[#666] mt-0.5">Renomeie ou oculte as colunas</p>
+            <p className="text-xs text-[#666] mt-0.5">Renomeie, oculte ou crie novas colunas</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg border border-[#222] flex items-center justify-center text-[#666] hover:text-white hover:border-[#333] transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="p-4 space-y-2">
+        <div className="p-4 space-y-2 overflow-y-auto flex-1">
           {draft.map((col) => (
             <div key={col.key} className="flex items-center gap-3 p-3 rounded-lg bg-[#0d0d0d] border border-[#1a1a1a]">
               <Grip className="h-4 w-4 text-[#333]" />
@@ -286,12 +328,16 @@ function SettingsModal({
                   className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-md px-2 py-1 text-sm text-white outline-none focus:border-[#22c55e]/50"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") confirmEdit(col.key); if (e.key === "Escape") setEditingKey(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") confirmEdit(col.key);
+                    if (e.key === "Escape") setEditingKey(null);
+                  }}
                   autoFocus
                 />
               ) : (
                 <span className={`flex-1 text-sm ${col.visible ? "text-white" : "text-[#444] line-through"}`}>
                   {col.label}
+                  {col.isCustom && <span className="ml-1.5 text-[9px] text-[#555]">custom</span>}
                 </span>
               )}
 
@@ -305,12 +351,28 @@ function SettingsModal({
                     <Pencil className="h-3 w-3" />
                   </button>
                 )}
-                <button onClick={() => toggleVisible(col.key)} className="w-7 h-7 rounded-md border border-[#222] flex items-center justify-center text-[#555] hover:text-white hover:border-[#333] transition-colors">
-                  {col.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                </button>
+
+                {col.isCustom ? (
+                  <button onClick={() => deleteCustomColumn(col.key)} className="w-7 h-7 rounded-md border border-[#ef4444]/20 flex items-center justify-center text-[#ef4444]/60 hover:text-[#ef4444] hover:bg-[#ef4444]/5 transition-colors">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                ) : (
+                  <button onClick={() => toggleVisible(col.key)} className="w-7 h-7 rounded-md border border-[#222] flex items-center justify-center text-[#555] hover:text-white hover:border-[#333] transition-colors">
+                    {col.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                  </button>
+                )}
               </div>
             </div>
           ))}
+
+          {/* Add new column button */}
+          <button
+            onClick={addCustomColumn}
+            className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-[#2a2a2a] text-[#555] hover:text-[#888] hover:border-[#333] transition-colors text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Nova coluna
+          </button>
         </div>
 
         <div className="flex items-center justify-between p-4 border-t border-[#1e1e1e]">
@@ -332,16 +394,18 @@ export default function PipelinePage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [dragOverStage, setDragOverStage] = useState<PatientStage | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
   const [showSettings, setShowSettings] = useState(false);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [activeChannelFilter, setActiveChannelFilter] = useState<string | null>(null);
+  const [customPositions, setCustomPositions] = useState<Record<string, string>>({});
   const dragPatientId = useRef<string | null>(null);
 
-  // Load column config from localStorage
+  // Load column config and custom positions from localStorage
   useEffect(() => {
     setColumns(loadColumns());
+    setCustomPositions(loadCustomPositions());
   }, []);
 
   const fetchPatients = useCallback(async () => {
@@ -375,51 +439,102 @@ export default function PipelinePage() {
     e.dataTransfer.effectAllowed = "move";
   }
 
-  function handleDragOver(e: React.DragEvent, stage: PatientStage) {
+  function handleDragOver(e: React.DragEvent, colKey: string) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    setDragOverStage(stage);
+    setDragOverKey(colKey);
   }
 
-  async function handleDrop(e: React.DragEvent, newStage: PatientStage) {
+  async function handleDrop(e: React.DragEvent, colKey: string) {
     e.preventDefault();
-    setDragOverStage(null);
+    setDragOverKey(null);
     const patientId = dragPatientId.current;
     if (!patientId) return;
+
     const patient = patients.find((p) => p.id === patientId);
-    if (!patient || patient.stage === newStage) return;
+    if (!patient) return;
 
-    setPatients((prev) => prev.map((p) => (p.id === patientId ? { ...p, stage: newStage } : p)));
+    const col = columns.find((c) => c.key === colKey);
+    if (!col) return;
 
-    try {
-      const res = await fetch(`/api/patients/${patientId}/stage`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: newStage }),
-      });
-      if (!res.ok) throw new Error();
-      const colLabel = columns.find((c) => c.key === newStage)?.label;
-      toast({ title: `${patient.name} movido para ${colLabel}`, variant: "success" });
-    } catch {
-      setPatients((prev) => prev.map((p) => (p.id === patientId ? { ...p, stage: patient.stage } : p)));
-      toast({ title: "Erro ao mover paciente", variant: "error" });
+    if (col.isCustom) {
+      // Custom column: update custom position in localStorage
+      const prevCustomKey = customPositions[patientId];
+      if (prevCustomKey === colKey) return;
+
+      const newPositions = { ...customPositions, [patientId]: colKey };
+      setCustomPositions(newPositions);
+      saveCustomPositions(newPositions);
+      toast({ title: `${patient.name} movido para ${col.label}`, variant: "success" });
+    } else {
+      // Standard column: remove custom position if any, update stage via API
+      const newStage = colKey as PatientStage;
+      const prevCustomKey = customPositions[patientId];
+      const wasInCustom = !!prevCustomKey;
+
+      if (!wasInCustom && patient.stage === newStage) return;
+
+      // Remove from custom positions if coming from custom column
+      if (wasInCustom) {
+        const newPositions = { ...customPositions };
+        delete newPositions[patientId];
+        setCustomPositions(newPositions);
+        saveCustomPositions(newPositions);
+      }
+
+      // Optimistically update
+      setPatients((prev) => prev.map((p) => (p.id === patientId ? { ...p, stage: newStage } : p)));
+
+      try {
+        const res = await fetch(`/api/patients/${patientId}/stage`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stage: newStage }),
+        });
+        if (!res.ok) throw new Error();
+        toast({ title: `${patient.name} movido para ${col.label}`, variant: "success" });
+      } catch {
+        // Revert
+        setPatients((prev) => prev.map((p) => (p.id === patientId ? { ...p, stage: patient.stage } : p)));
+        if (!wasInCustom) {
+          // Restore custom position if we removed it
+        }
+        toast({ title: "Erro ao mover paciente", variant: "error" });
+      }
     }
   }
 
   function handleSaveColumns(cols: ColumnConfig[]) {
     setColumns(cols);
     saveColumns(cols);
+    // Clean up custom positions for deleted custom columns
+    const existingCustomKeys = new Set(cols.filter((c) => c.isCustom).map((c) => c.key));
+    const cleanPositions: Record<string, string> = {};
+    for (const [pid, key] of Object.entries(customPositions)) {
+      if (existingCustomKeys.has(key)) cleanPositions[pid] = key;
+    }
+    setCustomPositions(cleanPositions);
+    saveCustomPositions(cleanPositions);
     toast({ title: "Pipeline atualizado!", variant: "success" });
   }
 
   const visibleColumns = columns.filter((c) => c.visible);
 
+  // Group patients: custom positions take priority over stage
   const grouped = columns.reduce(
     (acc, col) => {
-      acc[col.key] = filteredPatients.filter((p) => p.stage === col.key);
+      if (col.isCustom) {
+        // Custom column: patients whose customPositions[id] === col.key
+        acc[col.key] = filteredPatients.filter((p) => customPositions[p.id] === col.key);
+      } else {
+        // Standard column: patients in this stage AND not in a custom column
+        acc[col.key] = filteredPatients.filter(
+          (p) => p.stage === col.key && !customPositions[p.id]
+        );
+      }
       return acc;
     },
-    {} as Record<PatientStage, Patient[]>
+    {} as Record<string, Patient[]>
   );
 
   const hasFilters = activeTagFilter || activeChannelFilter;
@@ -512,17 +627,17 @@ export default function PipelinePage() {
       ) : (
         <div
           className="flex gap-4 overflow-x-auto pb-4"
-          onDragLeave={() => setDragOverStage(null)}
+          onDragLeave={() => setDragOverKey(null)}
         >
           {visibleColumns.map((col) => (
             <StageColumn
               key={col.key}
               col={col}
-              patients={grouped[col.key]}
+              patients={grouped[col.key] || []}
               onDragStart={handleDragStart}
               onDragOver={(e) => handleDragOver(e, col.key)}
               onDrop={handleDrop}
-              isDragOver={dragOverStage === col.key}
+              isDragOver={dragOverKey === col.key}
             />
           ))}
         </div>
