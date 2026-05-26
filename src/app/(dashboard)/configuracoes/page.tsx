@@ -147,13 +147,31 @@ export default function ConfiguracoesPage() {
     try {
       const res = await fetch("/api/whatsapp/connect", { method: "POST" });
       const data = await res.json();
-      if (data.base64) {
-        setQrCode(data.base64);
-        setWhatsappStatus("CONNECTING");
-      } else if (data.qrcode?.base64) {
-        setQrCode(data.qrcode.base64);
-        setWhatsappStatus("CONNECTING");
+      if (!res.ok) {
+        toast({
+          title: "Erro ao conectar WhatsApp",
+          description: data.error || "Verifique as configurações da Evolution API.",
+          variant: "error",
+        });
+        return;
       }
+      const base64 = data.base64 ?? data.qrcode?.base64;
+      if (base64) {
+        setQrCode(base64);
+        setWhatsappStatus("CONNECTING");
+      } else {
+        toast({
+          title: "QR Code não gerado",
+          description: "A API retornou uma resposta inesperada. Tente novamente.",
+          variant: "error",
+        });
+      }
+    } catch {
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível alcançar o serviço de WhatsApp. Tente novamente.",
+        variant: "error",
+      });
     } finally {
       setConnecting(false);
     }
