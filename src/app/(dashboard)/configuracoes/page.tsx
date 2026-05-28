@@ -21,6 +21,8 @@ import {
   CheckCircle,
   MessageCircle,
   Smartphone,
+  Pencil,
+  X,
 } from "lucide-react";
 
 type TenantSettings = {
@@ -86,6 +88,7 @@ export default function ConfiguracoesPage() {
 
   // New service type
   const [newService, setNewService] = useState({ name: "", defaultPrice: "" });
+  const [editingService, setEditingService] = useState<{ id: string; name: string; defaultPrice: string } | null>(null);
 
   // Appointment types
   const [appointmentTypes, setAppointmentTypes] = useState<string[]>([]);
@@ -242,6 +245,30 @@ export default function ConfiguracoesPage() {
     await fetch(`/api/service-types/${id}`, { method: "DELETE" });
     setServiceTypes((prev) => prev.filter((s) => s.id !== id));
     toast({ title: "Tipo removido", variant: "success" });
+  }
+
+  async function saveEditServiceType(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingService) return;
+    const res = await fetch(`/api/service-types/${editingService.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editingService.name,
+        defaultPrice: parseFloat(editingService.defaultPrice),
+      }),
+    });
+    if (res.ok) {
+      setServiceTypes((prev) =>
+        prev.map((s) =>
+          s.id === editingService.id
+            ? { ...s, name: editingService.name, defaultPrice: parseFloat(editingService.defaultPrice) }
+            : s
+        )
+      );
+      setEditingService(null);
+      toast({ title: "Tipo atualizado!", variant: "success" });
+    }
   }
 
   async function saveTemplate(type: string, content: string) {
@@ -470,36 +497,78 @@ export default function ConfiguracoesPage() {
               <CardTitle>Tipos de Serviço</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {serviceTypes.map((st) => (
-                <div
-                  key={st.id}
-                  className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-white">{st.name}</p>
-                    <p className="text-xs text-[#666]">{formatCurrency(st.defaultPrice)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={st.isActive ? "active" : "inactive"}>
-                      {st.isActive ? "Ativo" : "Inativo"}
-                    </Badge>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => toggleServiceType(st.id, st.isActive)}
-                    >
-                      {st.isActive ? "Desativar" : "Ativar"}
+              {serviceTypes.map((st) =>
+                editingService?.id === st.id ? (
+                  <form
+                    key={st.id}
+                    onSubmit={saveEditServiceType}
+                    className="flex items-end gap-3 px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#22c55e]/30"
+                  >
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-[#666]">Nome</Label>
+                      <Input
+                        value={editingService.name}
+                        onChange={(e) => setEditingService({ ...editingService, name: e.target.value })}
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div className="w-36 space-y-1">
+                      <Label className="text-xs text-[#666]">Valor (R$)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editingService.defaultPrice}
+                        onChange={(e) => setEditingService({ ...editingService, defaultPrice: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" size="sm">
+                      <Save className="h-3.5 w-3.5" />
+                      Salvar
                     </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => deleteServiceType(st.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <Button type="button" variant="secondary" size="sm" onClick={() => setEditingService(null)}>
+                      <X className="h-3.5 w-3.5" />
                     </Button>
+                  </form>
+                ) : (
+                  <div
+                    key={st.id}
+                    className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-white">{st.name}</p>
+                      <p className="text-xs text-[#666]">{formatCurrency(st.defaultPrice)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={st.isActive ? "active" : "inactive"}>
+                        {st.isActive ? "Ativo" : "Inativo"}
+                      </Badge>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setEditingService({ id: st.id, name: st.name, defaultPrice: String(st.defaultPrice) })}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => toggleServiceType(st.id, st.isActive)}
+                      >
+                        {st.isActive ? "Desativar" : "Ativar"}
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => deleteServiceType(st.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </CardContent>
           </Card>
 
