@@ -52,9 +52,26 @@ export async function POST(req: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = (body.data as any) || {};
 
-  const buyerEmail = (data?.buyer?.email as string)?.toLowerCase()?.trim();
-  const buyerName = (data?.buyer?.name as string) || "";
-  const offerCode = (data?.offer?.code as string) || "";
+  // Hotmart envia o e-mail em campos diferentes dependendo do evento
+  const buyerEmail = (
+    (data?.buyer?.email as string) ||
+    (data?.subscriber?.email as string) ||
+    (data?.subscription?.subscriber?.email as string) ||
+    ""
+  ).toLowerCase().trim();
+
+  const buyerName = (
+    (data?.buyer?.name as string) ||
+    (data?.subscriber?.name as string) ||
+    ""
+  );
+
+  const offerCode = (
+    (data?.offer?.code as string) ||
+    (data?.subscription?.plan?.id as string) ||
+    ""
+  );
+
   const transactionId = (data?.purchase?.transaction as string) || undefined;
 
   if (!buyerEmail) {
