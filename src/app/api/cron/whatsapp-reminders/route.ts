@@ -79,6 +79,7 @@ async function sendReminders8d() {
       nome_clinica: apt.tenant.clinicName || "",
       data_consulta: formatDateBR(scheduledDate),
       hora_consulta: formatTimeBR(scheduledDate),
+      tipo_consulta: apt.consultationType || "",
     });
 
     const ok = await sendTemplateMessage(apt.tenantId, apt.patient.id, apt.patient.phone, message, "REMINDER_8D");
@@ -125,6 +126,7 @@ async function sendReminders24h() {
       nome_clinica: apt.tenant.clinicName || "",
       data_consulta: formatDateBR(scheduledDate),
       hora_consulta: formatTimeBR(scheduledDate),
+      tipo_consulta: apt.consultationType || "",
     });
 
     const ok = await sendTemplateMessage(apt.tenantId, apt.patient.id, apt.patient.phone, message, "REMINDER");

@@ -28,6 +28,7 @@ type Appointment = {
   duration: number;
   status: string;
   notes: string | null;
+  consultationType: string | null;
   patient: { name: string; phone: string };
 };
 
@@ -81,7 +82,9 @@ export default function AgendamentosPage() {
     scheduledAt: "",
     duration: "50",
     notes: "",
+    consultationType: "",
   });
+  const [appointmentTypes, setAppointmentTypes] = useState<string[]>([]);
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
@@ -118,6 +121,9 @@ export default function AgendamentosPage() {
     fetch("/api/patients?status=active")
       .then((r) => r.json())
       .then((d) => setPatients(Array.isArray(d) ? d : []));
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => setAppointmentTypes(d.appointmentTypes || []));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -132,7 +138,7 @@ export default function AgendamentosPage() {
       if (res.ok) {
         toast({ title: "Agendamento criado!", variant: "success" });
         setShowNew(false);
-        setForm({ patientId: "", scheduledAt: "", duration: "50", notes: "" });
+        setForm({ patientId: "", scheduledAt: "", duration: "50", notes: "", consultationType: "" });
         fetchAppointments();
       } else {
         toast({ title: "Erro ao criar agendamento", variant: "error" });
@@ -476,6 +482,24 @@ export default function AgendamentosPage() {
                 />
               </div>
             </div>
+            {appointmentTypes.length > 0 && (
+              <div className="space-y-2">
+                <Label>Tipo de Consulta</Label>
+                <Select
+                  value={form.consultationType}
+                  onValueChange={(v) => setForm((p) => ({ ...p, consultationType: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {appointmentTypes.map((type) => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Observações</Label>
               <Textarea

@@ -4,6 +4,7 @@ interface TemplateVars {
   nome_clinica: string;
   data_consulta?: string;
   hora_consulta?: string;
+  tipo_consulta?: string;
 }
 
 export function replaceTemplateVars(
@@ -15,7 +16,8 @@ export function replaceTemplateVars(
     .replace(/{nome_nutricionista}/g, vars.nome_nutricionista)
     .replace(/{nome_clinica}/g, vars.nome_clinica)
     .replace(/{data_consulta}/g, vars.data_consulta || "")
-    .replace(/{hora_consulta}/g, vars.hora_consulta || "");
+    .replace(/{hora_consulta}/g, vars.hora_consulta || "")
+    .replace(/{tipo_consulta}/g, vars.tipo_consulta || "");
 }
 
 export function formatDateBR(date: Date): string {

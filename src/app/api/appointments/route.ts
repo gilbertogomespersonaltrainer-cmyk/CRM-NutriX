@@ -54,6 +54,7 @@ export async function POST(req: Request) {
         scheduledAt: new Date(body.scheduledAt),
         duration: body.duration || 50,
         notes: body.notes || null,
+        consultationType: body.consultationType || null,
       },
       include: { patient: { select: { name: true, phone: true } } },
     });
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
             nome_clinica: tenant.clinicName || "",
             data_consulta: formatDateBR(scheduledDate),
             hora_consulta: formatTimeBR(scheduledDate),
+            tipo_consulta: appointment.consultationType || "",
           });
 
           await sendTextMessage(tenantId, patient.phone, message);

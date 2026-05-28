@@ -19,6 +19,7 @@ export async function GET() {
         defaultDuration: true,
         workingHours: true,
         whatsappStatus: true,
+        appointmentTypes: true,
       },
     });
     return NextResponse.json(tenant);
@@ -43,6 +44,8 @@ export async function PUT(req: Request) {
       data.defaultDuration = body.defaultDuration;
     if (body.workingHours !== undefined)
       data.workingHours = body.workingHours;
+    if (body.appointmentTypes !== undefined)
+      data.appointmentTypes = body.appointmentTypes;
     if (body.password) {
       data.password = await bcrypt.hash(body.password, 12);
     }
@@ -60,6 +63,7 @@ export async function PUT(req: Request) {
         inactiveDaysThreshold: true,
         defaultDuration: true,
         workingHours: true,
+        appointmentTypes: true,
       },
     });
 

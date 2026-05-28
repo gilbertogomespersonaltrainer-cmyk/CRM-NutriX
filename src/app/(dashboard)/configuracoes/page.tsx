@@ -33,6 +33,7 @@ type TenantSettings = {
   inactiveDaysThreshold: number;
   defaultDuration: number;
   whatsappStatus: string;
+  appointmentTypes: string[];
 };
 
 type ServiceType = {
@@ -86,6 +87,10 @@ export default function ConfiguracoesPage() {
   // New service type
   const [newService, setNewService] = useState({ name: "", defaultPrice: "" });
 
+  // Appointment types
+  const [appointmentTypes, setAppointmentTypes] = useState<string[]>([]);
+  const [newAptType, setNewAptType] = useState("");
+
   useEffect(() => {
     const saved = localStorage.getItem(LOGO_KEY);
     if (saved) setLogo(saved);
@@ -121,6 +126,7 @@ export default function ConfiguracoesPage() {
     const sData = await sRes.json();
     setSettings(sData);
     setWhatsappStatus(sData.whatsappStatus);
+    setAppointmentTypes(sData.appointmentTypes || []);
     setServiceTypes(await stRes.json());
     setTemplates(await tRes.json());
     setLoading(false);
@@ -529,6 +535,74 @@ export default function ConfiguracoesPage() {
               </form>
             </CardContent>
           </Card>
+          {/* Tipos de Consulta */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tipos de Consulta</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-[#666]">
+                Defina os tipos de consulta disponíveis para agendamento. Use a variável <span className="text-[#22c55e]">{"{tipo_consulta}"}</span> nos templates de mensagem.
+              </p>
+              {appointmentTypes.length === 0 && (
+                <p className="text-sm text-[#555] text-center py-4">Nenhum tipo cadastrado ainda.</p>
+              )}
+              {appointmentTypes.map((type, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]"
+                >
+                  <p className="text-sm text-white">{type}</p>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={async () => {
+                      const updated = appointmentTypes.filter((_, i) => i !== idx);
+                      setAppointmentTypes(updated);
+                      await fetch("/api/settings", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ appointmentTypes: updated }),
+                      });
+                      toast({ title: "Tipo removido", variant: "success" });
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!newAptType.trim()) return;
+                  const updated = [...appointmentTypes, newAptType.trim()];
+                  setAppointmentTypes(updated);
+                  setNewAptType("");
+                  await fetch("/api/settings", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ appointmentTypes: updated }),
+                  });
+                  toast({ title: "Tipo adicionado!", variant: "success" });
+                }}
+                className="flex gap-3 items-end pt-2"
+              >
+                <div className="flex-1 space-y-2">
+                  <Label>Novo tipo</Label>
+                  <Input
+                    value={newAptType}
+                    onChange={(e) => setNewAptType(e.target.value)}
+                    placeholder="Ex: Primeira Consulta, Retorno, Online..."
+                    required
+                  />
+                </div>
+                <Button type="submit">
+                  <Plus className="h-4 w-4" />
+                  Adicionar
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -614,10 +688,11 @@ export default function ConfiguracoesPage() {
       {tab === "templates" && (
         <div className="max-w-2xl space-y-4">
           <p className="text-sm text-[#666]">
-            Variáveis disponíveis: {"{nome_paciente}"}, {"{data_consulta}"}, {"{hora_consulta}"}, {"{nome_nutricionista}"}, {"{nome_clinica}"}, {"{dias_inativo}"}
+            Variáveis disponíveis: <span className="text-[#22c55e]">{"{nome_paciente}"}</span>, <span className="text-[#22c55e]">{"{data_consulta}"}</span>, <span className="text-[#22c55e]">{"{hora_consulta}"}</span>, <span className="text-[#22c55e]">{"{tipo_consulta}"}</span>, <span className="text-[#22c55e]">{"{nome_nutricionista}"}</span>, <span className="text-[#22c55e]">{"{nome_clinica}"}</span>
           </p>
           {[
-            { type: "CONFIRMATION", label: "Confirmação de Agendamento" },
+            { type: "CONFIRMATION", label: "Confirmação de Consulta" },
+            { type: "REMINDER_8D", label: "Lembrete 8 Dias Antes" },
             { type: "REMINDER", label: "Lembrete 24h Antes" },
             { type: "FOLLOWUP", label: "Follow-up de Inativo" },
           ].map((tmpl) => {

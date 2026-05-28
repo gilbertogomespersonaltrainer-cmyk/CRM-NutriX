@@ -140,6 +140,7 @@ model Tenant {
   inactiveDaysThreshold Int            @default(30)
   defaultDuration       Int            @default(50)
   workingHours          Json?
+  appointmentTypes      String[]       @default([])
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
@@ -215,6 +216,7 @@ model Appointment {
   duration         Int               @default(50)
   status           AppointmentStatus @default(SCHEDULED)
   notes            String?
+  consultationType String?
   confirmationSent Boolean           @default(false)
   reminder8dSent   Boolean           @default(false)
   reminder24hSent  Boolean           @default(false)
