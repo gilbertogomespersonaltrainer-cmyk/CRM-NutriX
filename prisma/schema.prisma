@@ -350,3 +350,17 @@ model MessageTemplate {
   @@unique([tenantId, type])
   @@map("message_templates")
 }
+
+model HotmartPurchase {
+  id            String    @id @default(cuid())
+  email         String
+  planName      String
+  offerCode     String?
+  transactionId String?   @unique
+  event         String
+  activatedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([email])
+  @@map("hotmart_purchases")
+}

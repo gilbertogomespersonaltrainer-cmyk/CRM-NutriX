@@ -76,18 +76,50 @@ export async function POST(req: Request) {
       data: defaultTemplates.map((t) => ({ ...t, tenantId: tenant.id })),
     });
 
-    // Create 7-day trial subscription
-    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await prisma.subscription.create({
-      data: {
-        tenantId: tenant.id,
-        planId: await prisma.plan
-          .findFirst({ where: { isActive: true }, orderBy: { sortOrder: "asc" } })
-          .then((p) => p?.id ?? ""),
-        status: "TRIAL",
-        trialEndsAt,
-      },
+    // Verifica se existe compra Hotmart pendente para este e-mail
+    const pendingPurchase = await prisma.hotmartPurchase.findFirst({
+      where: { email: email.toLowerCase(), activatedAt: null },
+      orderBy: { createdAt: "desc" },
     });
+
+    const defaultPlan = await prisma.plan.findFirst({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+    });
+
+    if (pendingPurchase) {
+      // Comprador existente → ativa assinatura imediatamente com o plano certo
+      const purchasedPlan = await prisma.plan.findFirst({
+        where: { name: { equals: pendingPurchase.planName, mode: "insensitive" }, isActive: true },
+      });
+
+      await prisma.subscription.create({
+        data: {
+          tenantId: tenant.id,
+          planId: purchasedPlan?.id ?? defaultPlan?.id ?? "",
+          status: "ACTIVE",
+          startsAt: new Date(),
+          expiresAt: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      // Marca a compra como ativada
+      await prisma.hotmartPurchase.update({
+        where: { id: pendingPurchase.id },
+        data: { activatedAt: new Date() },
+      });
+    } else {
+      // Sem compra pendente → trial de 7 dias
+      const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await prisma.subscription.create({
+        data: {
+          tenantId: tenant.id,
+          planId: defaultPlan?.id ?? "",
+          status: "TRIAL",
+          trialEndsAt,
+        },
+      });
+    }
 
     return NextResponse.json(
       { id: tenant.id, name: tenant.name, email: tenant.email },
