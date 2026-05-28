@@ -64,7 +64,15 @@ async function logPurchase(
   }
 }
 
+// Rota de diagnóstico — acesse no browser para confirmar que a rota está ativa
+export async function GET() {
+  return Response.json({ ok: true, service: "hotmart-webhook", ts: new Date().toISOString() });
+}
+
 export async function POST(req: Request) {
+  // Log imediato — se não aparecer nos logs da Vercel, o handler não está sendo chamado
+  console.log("[hotmart-webhook] POST recebido:", new Date().toISOString());
+
   // Sempre retorna 200 para a Hotmart — processamento interno pode falhar silenciosamente
   try {
     if (!verifyHottok(req)) {
