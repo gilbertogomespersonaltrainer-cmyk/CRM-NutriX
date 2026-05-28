@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
+import { sendTextMessage } from "@/lib/whatsapp";
+import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
 
 export async function GET(req: Request) {
   try {
@@ -55,6 +57,50 @@ export async function POST(req: Request) {
       },
       include: { patient: { select: { name: true, phone: true } } },
     });
+
+    // Envia confirmação automática via WhatsApp
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true, clinicName: true, whatsappStatus: true },
+      });
+
+      if (tenant?.whatsappStatus === "CONNECTED") {
+        const template = await prisma.messageTemplate.findUnique({
+          where: { tenantId_type: { tenantId, type: "CONFIRMATION" } },
+        });
+
+        if (template) {
+          const scheduledDate = new Date(appointment.scheduledAt);
+          const message = replaceTemplateVars(template.content, {
+            nome_paciente: patient.name,
+            nome_nutricionista: tenant.name,
+            nome_clinica: tenant.clinicName || "",
+            data_consulta: formatDateBR(scheduledDate),
+            hora_consulta: formatTimeBR(scheduledDate),
+          });
+
+          await sendTextMessage(tenantId, patient.phone, message);
+          await prisma.appointment.update({
+            where: { id: appointment.id },
+            data: { confirmationSent: true },
+          });
+          await prisma.whatsAppLog.create({
+            data: {
+              tenantId,
+              patientId: patient.id,
+              messageType: "CONFIRMATION",
+              phoneNumber: patient.phone,
+              messageText: message,
+              status: "SENT",
+            },
+          });
+        }
+      }
+    } catch (err) {
+      // Não bloqueia a criação do agendamento se o envio falhar
+      console.error("[confirmation-send]", err);
+    }
 
     return NextResponse.json(appointment, { status: 201 });
   } catch {

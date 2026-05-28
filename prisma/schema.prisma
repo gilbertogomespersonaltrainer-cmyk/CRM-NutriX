@@ -45,6 +45,7 @@ enum TransactionType {
 
 enum MessageTemplateType {
   CONFIRMATION
+  REMINDER_8D
   REMINDER
   REMINDER_2H
   FOLLOWUP
@@ -214,6 +215,8 @@ model Appointment {
   duration         Int               @default(50)
   status           AppointmentStatus @default(SCHEDULED)
   notes            String?
+  confirmationSent Boolean           @default(false)
+  reminder8dSent   Boolean           @default(false)
   reminder24hSent  Boolean           @default(false)
   reminder2hSent   Boolean           @default(false)
   postConsultSent  Boolean           @default(false)

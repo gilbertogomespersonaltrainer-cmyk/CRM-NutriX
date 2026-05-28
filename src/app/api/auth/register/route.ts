@@ -56,9 +56,14 @@ export async function POST(req: Request) {
           "Olá {nome_paciente}! Sua consulta com {nome_nutricionista} está confirmada para {data_consulta} às {hora_consulta}.",
       },
       {
+        type: "REMINDER_8D" as const,
+        content:
+          "Olá {nome_paciente}! Passando para lembrar que sua consulta com {nome_nutricionista} está agendada para {data_consulta} às {hora_consulta}. Confirme sua presença respondendo esta mensagem! 😊",
+      },
+      {
         type: "REMINDER" as const,
         content:
-          "Olá {nome_paciente}! Lembrando que você tem consulta amanhã, {data_consulta} às {hora_consulta} com {nome_nutricionista}.",
+          "Olá {nome_paciente}! Lembrando que você tem consulta amanhã, {data_consulta} às {hora_consulta} com {nome_nutricionista}. Até lá! 👋",
       },
       {
         type: "FOLLOWUP" as const,
