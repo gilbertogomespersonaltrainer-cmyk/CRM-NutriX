@@ -10,10 +10,11 @@ const OFFER_PLAN_MAP: Record<string, string> = {
   "6rficksd": "Professional",
 };
 
-// Eventos que significam compra aprovada/renovada
+// Eventos que significam compra aprovada/renovada/troca de plano
 const APPROVED_EVENTS = new Set([
   "PURCHASE_APPROVED", // Compra aprovada
   "PURCHASE_COMPLETE", // Compra concluída
+  "SWITCH_PLAN",       // Troca de plano (upgrade/downgrade)
 ]);
 
 // Eventos que significam cancelamento/reembolso
