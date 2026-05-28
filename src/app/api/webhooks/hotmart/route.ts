@@ -12,17 +12,15 @@ const OFFER_PLAN_MAP: Record<string, string> = {
 
 // Eventos que significam compra aprovada/renovada
 const APPROVED_EVENTS = new Set([
-  "PURCHASE_APPROVED",        // Compra aprovada
-  "PURCHASE_COMPLETE",        // Compra concluída
-  "SUBSCRIPTION_REACTIVATED", // Assinatura reativada
+  "PURCHASE_APPROVED", // Compra aprovada
+  "PURCHASE_COMPLETE", // Compra concluída
 ]);
 
 // Eventos que significam cancelamento/reembolso
 const CANCEL_EVENTS = new Set([
-  "PURCHASE_CANCELLED",       // Compra cancelada
-  "PURCHASE_REFUNDED",        // Reembolso solicitado
-  "PURCHASE_CHARGEBACK",      // Chargeback (contestação)
-  "PURCHASE_PROTEST",         // Compra protestada
+  "PURCHASE_CANCELLED",        // Compra cancelada
+  "PURCHASE_REFUNDED",         // Reembolso solicitado
+  "PURCHASE_CHARGEBACK",       // Chargeback (contestação)
   "SUBSCRIPTION_CANCELLATION", // Cancelamento de assinatura
 ]);
 
