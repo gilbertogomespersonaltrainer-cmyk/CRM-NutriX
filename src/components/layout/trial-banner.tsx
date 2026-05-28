@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { Clock, ExternalLink } from "lucide-react";
 
-const HOTMART_URL = process.env.NEXT_PUBLIC_HOTMART_CHECKOUT_URL ?? "https://pay.hotmart.com/";
+const HOTMART_URL = "https://pay.hotmart.com/H105769412F?off=8b1ck2sq&bid=1779979250140";
 
 export function TrialBanner() {
   const { data: session } = useSession();
