@@ -43,18 +43,18 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.clinicName = (user as { clinicName?: string }).clinicName;
-        token.subscriptionStatus = (user as { subscriptionStatus?: string }).subscriptionStatus;
-        token.trialEndsAt = (user as { trialEndsAt?: string | null }).trialEndsAt;
+        token.clinicName = user.clinicName;
+        token.subscriptionStatus = user.subscriptionStatus;
+        token.trialEndsAt = user.trialEndsAt;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id: string }).id = token.id as string;
-        (session.user as { clinicName?: string }).clinicName = token.clinicName as string;
-        (session.user as { subscriptionStatus?: string }).subscriptionStatus = token.subscriptionStatus as string;
-        (session.user as { trialEndsAt?: string | null }).trialEndsAt = token.trialEndsAt as string | null;
+        session.user.id = token.id;
+        session.user.clinicName = token.clinicName;
+        session.user.subscriptionStatus = token.subscriptionStatus;
+        session.user.trialEndsAt = token.trialEndsAt;
       }
       return session;
     },

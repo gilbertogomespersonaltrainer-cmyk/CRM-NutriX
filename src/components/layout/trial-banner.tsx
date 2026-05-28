@@ -8,8 +8,8 @@ const HOTMART_URL = "https://pay.hotmart.com/H105769412F?off=8b1ck2sq&bid=177997
 export function TrialBanner() {
   const { data: session } = useSession();
 
-  const status = (session?.user as { subscriptionStatus?: string })?.subscriptionStatus;
-  const trialEndsAt = (session?.user as { trialEndsAt?: string | null })?.trialEndsAt;
+  const status = session?.user?.subscriptionStatus;
+  const trialEndsAt = session?.user?.trialEndsAt;
 
   if (status !== "TRIAL" || !trialEndsAt) return null;
 
