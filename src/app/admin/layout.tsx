@@ -9,6 +9,8 @@ import { LogOut } from "lucide-react";
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: "layout" as const },
   { href: "/admin/assinantes", label: "Assinantes", icon: "users" as const },
+  { href: "/admin/financeiro", label: "Financeiro", icon: "trendingUp" as const },
+  { href: "/admin/relatorios", label: "Relatórios", icon: "clipboard" as const },
   { href: "/admin/planos", label: "Planos", icon: "receipt" as const },
 ];
 

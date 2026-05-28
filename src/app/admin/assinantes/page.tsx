@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { Search, MoreVertical } from "lucide-react";
+import { Search, MoreVertical, Gift, Clock } from "lucide-react";
 
 type Tenant = {
   id: string;
@@ -56,6 +56,10 @@ export default function AssinantesPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [selected, setSelected] = useState<Tenant | null>(null);
   const [showActions, setShowActions] = useState(false);
+  const [giftExpiresAt, setGiftExpiresAt] = useState("");
+  const [trialDays, setTrialDays] = useState(7);
+  const [showGift, setShowGift] = useState(false);
+  const [showExtend, setShowExtend] = useState(false);
 
   const fetchTenants = useCallback(async () => {
     const params = new URLSearchParams();
@@ -73,26 +77,33 @@ export default function AssinantesPage() {
       .then(setPlans);
   }, [fetchTenants]);
 
-  async function handleAction(tenantId: string, action: string, planId?: string) {
+  async function handleAction(
+    tenantId: string,
+    action: string,
+    extra?: { planId?: string; expiresAt?: string; trialDays?: number }
+  ) {
     const res = await fetch("/api/admin/tenants", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tenantId, action, planId }),
+      body: JSON.stringify({ tenantId, action, ...extra }),
     });
 
     if (res.ok) {
       const updated = await res.json();
       setTenants((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       setShowActions(false);
+      setShowGift(false);
+      setShowExtend(false);
       setSelected(null);
-      toast({
-        title:
-          action === "activate" ? "Assinatura ativada" :
-          action === "suspend" ? "Assinatura suspensa" :
-          action === "cancel" ? "Assinatura cancelada" :
-          "Plano alterado",
-        variant: "success",
-      });
+      const labels: Record<string, string> = {
+        activate: "Assinatura ativada",
+        suspend: "Assinatura suspensa",
+        cancel: "Assinatura cancelada",
+        changePlan: "Plano alterado",
+        giftSubscription: "Assinatura presenteada com sucesso",
+        extendTrial: "Trial estendido com sucesso",
+      };
+      toast({ title: labels[action] || "Atualizado", variant: "success" });
     }
   }
 
@@ -210,7 +221,14 @@ export default function AssinantesPage() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button
-                            onClick={() => { setSelected(tenant); setShowActions(true); }}
+                            onClick={() => {
+                              setSelected(tenant);
+                              setShowGift(false);
+                              setShowExtend(false);
+                              setGiftExpiresAt("");
+                              setTrialDays(7);
+                              setShowActions(true);
+                            }}
                             className="w-8 h-8 rounded-lg hover:bg-[#161616] flex items-center justify-center transition-colors inline-flex"
                           >
                             <MoreVertical className="h-4 w-4 text-[#666]" />
@@ -228,7 +246,7 @@ export default function AssinantesPage() {
 
       {/* Actions Dialog */}
       <Dialog open={showActions} onOpenChange={setShowActions}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Gerenciar Assinante</DialogTitle>
             <DialogDescription>
@@ -243,7 +261,7 @@ export default function AssinantesPage() {
                   {plans.map((plan) => (
                     <button
                       key={plan.id}
-                      onClick={() => handleAction(selected.id, "changePlan", plan.id)}
+                      onClick={() => handleAction(selected.id, "changePlan", { planId: plan.id })}
                       className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors text-left ${
                         selected.subscription?.plan.id === plan.id
                           ? "border-[#22c55e]/30 bg-[#22c55e]/5"
@@ -255,6 +273,106 @@ export default function AssinantesPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="h-px bg-[#1e1e1e]" />
+
+              {/* Presentear assinatura */}
+              <div className="space-y-2">
+                <p className="text-xs text-[#666] font-medium uppercase tracking-wider">
+                  Presentear Assinatura
+                </p>
+                {!showGift ? (
+                  <button
+                    onClick={() => setShowGift(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#22c55e]/20 bg-[#22c55e]/5 text-sm text-[#22c55e] hover:bg-[#22c55e]/10 transition-colors w-full"
+                  >
+                    <Gift className="h-4 w-4" />
+                    Dar acesso gratuito com data de expiração
+                  </button>
+                ) : (
+                  <div className="space-y-2 p-3 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d]">
+                    <p className="text-xs text-[#666]">Acesso ativo até:</p>
+                    <input
+                      type="date"
+                      value={giftExpiresAt}
+                      onChange={(e) => setGiftExpiresAt(e.target.value)}
+                      className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#22c55e]/50"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={!giftExpiresAt}
+                        onClick={() =>
+                          handleAction(selected.id, "giftSubscription", {
+                            expiresAt: new Date(giftExpiresAt).toISOString(),
+                          })
+                        }
+                      >
+                        Confirmar
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setShowGift(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Estender trial */}
+              <div className="space-y-2">
+                <p className="text-xs text-[#666] font-medium uppercase tracking-wider">
+                  Estender Trial
+                </p>
+                {!showExtend ? (
+                  <button
+                    onClick={() => setShowExtend(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#3b82f6]/20 bg-[#3b82f6]/5 text-sm text-[#3b82f6] hover:bg-[#3b82f6]/10 transition-colors w-full"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Adicionar dias de trial
+                  </button>
+                ) : (
+                  <div className="space-y-2 p-3 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d]">
+                    <p className="text-xs text-[#666]">Quantos dias adicionar:</p>
+                    <div className="flex gap-2">
+                      {[7, 14, 30].map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setTrialDays(d)}
+                          className={`flex-1 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                            trialDays === d
+                              ? "border-[#3b82f6]/40 bg-[#3b82f6]/10 text-[#3b82f6]"
+                              : "border-[#1e1e1e] text-[#666] hover:text-white"
+                          }`}
+                        >
+                          {d}d
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          handleAction(selected.id, "extendTrial", { trialDays })
+                        }
+                      >
+                        Confirmar
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setShowExtend(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="h-px bg-[#1e1e1e]" />

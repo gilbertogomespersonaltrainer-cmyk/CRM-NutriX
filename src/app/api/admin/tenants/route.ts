@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest) {
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { tenantId, action, planId } = await req.json();
+  const { tenantId, action, planId, expiresAt, trialDays } = await req.json();
 
   if (action === "activate") {
     await prisma.subscription.update({
@@ -61,6 +61,29 @@ export async function PATCH(req: NextRequest) {
     await prisma.subscription.update({
       where: { tenantId },
       data: { planId },
+    });
+  } else if (action === "giftSubscription" && expiresAt) {
+    await prisma.subscription.update({
+      where: { tenantId },
+      data: {
+        status: "ACTIVE",
+        startsAt: new Date(),
+        expiresAt: new Date(expiresAt),
+        cancelledAt: null,
+      },
+    });
+  } else if (action === "extendTrial") {
+    const days = trialDays || 7;
+    const sub = await prisma.subscription.findUnique({ where: { tenantId } });
+    const base = sub?.trialEndsAt && new Date(sub.trialEndsAt) > new Date()
+      ? new Date(sub.trialEndsAt)
+      : new Date();
+    await prisma.subscription.update({
+      where: { tenantId },
+      data: {
+        status: "TRIAL",
+        trialEndsAt: new Date(base.getTime() + days * 24 * 60 * 60 * 1000),
+      },
     });
   }
 
