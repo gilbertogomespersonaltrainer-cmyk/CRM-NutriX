@@ -12,18 +12,18 @@ const OFFER_PLAN_MAP: Record<string, string> = {
 
 // Eventos que significam compra aprovada/renovada
 const APPROVED_EVENTS = new Set([
-  "PURCHASE_APPROVED",
-  "PURCHASE_COMPLETE",
-  "SUBSCRIPTION_REACTIVATED",
+  "PURCHASE_APPROVED",        // Compra aprovada
+  "PURCHASE_COMPLETE",        // Compra concluída
+  "SUBSCRIPTION_REACTIVATED", // Assinatura reativada
 ]);
 
 // Eventos que significam cancelamento/reembolso
 const CANCEL_EVENTS = new Set([
-  "PURCHASE_CANCELLED",
-  "PURCHASE_REFUNDED",
-  "PURCHASE_CHARGEBACK",
-  "PURCHASE_PROTEST",
-  "SUBSCRIPTION_CANCELLATION",
+  "PURCHASE_CANCELLED",       // Compra cancelada
+  "PURCHASE_REFUNDED",        // Reembolso solicitado
+  "PURCHASE_CHARGEBACK",      // Chargeback (contestação)
+  "PURCHASE_PROTEST",         // Compra protestada
+  "SUBSCRIPTION_CANCELLATION", // Cancelamento de assinatura
 ]);
 
 function verifyHottok(req: Request): boolean {
