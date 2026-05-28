@@ -142,22 +142,87 @@ export async function POST(req: Request) {
 
           await logPurchase(buyerEmail, planName, offerCode, transactionId, event, new Date());
 
-          // E-mail de confirmação
+          // E-mail de confirmação — assinatura ativada
+          const appUrl = process.env.NEXTAUTH_URL || "https://app.crmnutrix.com.br";
           await getResend()?.emails.send({
-            from: "NutriX <noreply@crmnutrix.com.br>",
+            from: "NutriX CRM <noreply@crmnutrix.com.br>",
             to: buyerEmail,
-            subject: "✅ Assinatura NutriX ativada com sucesso!",
-            html: `
-              <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#080808;color:#fff;padding:32px;border-radius:12px;">
-                <h1 style="color:#22c55e;font-size:24px;margin-bottom:8px;">Tudo certo! 🎉</h1>
-                <p style="color:#a1a1a1;font-size:16px;">Olá, ${tenant.name}! Sua assinatura <strong style="color:#fff;">${planName}</strong> foi ativada.</p>
-                <a href="${process.env.NEXTAUTH_URL || "https://app.crmnutrix.com.br"}/dashboard"
-                  style="display:inline-block;margin-top:20px;background:#22c55e;color:#000;font-weight:bold;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:15px;">
-                  Acessar o NutriX
-                </a>
-                <p style="color:#444;font-size:12px;margin-top:32px;">NutriX CRM · crmnutrix.com.br</p>
-              </div>
-            `,
+            subject: "🎉 Sua assinatura NutriX está ativa!",
+            html: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0f0f0f;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+
+        <!-- Logo -->
+        <tr><td align="center" style="padding-bottom:32px;">
+          <span style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-1px;">Nutri</span><span style="font-size:32px;font-weight:900;color:#22c55e;letter-spacing:-1px;">X</span>
+          <p style="margin:4px 0 0;font-size:11px;letter-spacing:3px;color:#22c55e;text-transform:uppercase;font-weight:600;">CRM para Nutricionistas</p>
+        </td></tr>
+
+        <!-- Card principal -->
+        <tr><td style="background:#161616;border-radius:16px;border:1px solid #2a2a2a;overflow:hidden;">
+
+          <!-- Header verde -->
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="background:linear-gradient(135deg,#16a34a,#22c55e);padding:32px;text-align:center;">
+              <p style="margin:0;font-size:40px;">🎉</p>
+              <h1 style="margin:12px 0 4px;font-size:24px;font-weight:800;color:#fff;">Assinatura Ativada!</h1>
+              <p style="margin:0;font-size:15px;color:rgba(255,255,255,0.85);">Tudo pronto para você começar</p>
+            </td></tr>
+          </table>
+
+          <!-- Corpo -->
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;color:#e5e5e5;">Olá, <strong style="color:#fff;">${tenant.name.split(" ")[0]}</strong>! 👋</p>
+              <p style="margin:0 0 24px;font-size:15px;color:#a1a1a1;line-height:1.6;">
+                Sua assinatura do plano <strong style="color:#22c55e;">${planName}</strong> foi ativada com sucesso.
+                A partir de agora você tem acesso completo ao NutriX CRM e pode começar a organizar seus pacientes e consultas.
+              </p>
+
+              <!-- Destaques do plano -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:10px;border:1px solid #2a2a2a;margin-bottom:28px;">
+                <tr><td style="padding:20px;">
+                  <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:2px;">O que você tem acesso</p>
+                  <p style="margin:0 0 8px;font-size:14px;color:#d4d4d4;">✅ &nbsp;Gestão completa de pacientes</p>
+                  <p style="margin:0 0 8px;font-size:14px;color:#d4d4d4;">✅ &nbsp;Agendamentos e lembretes automáticos</p>
+                  <p style="margin:0 0 8px;font-size:14px;color:#d4d4d4;">✅ &nbsp;Envio de mensagens via WhatsApp</p>
+                  <p style="margin:0 0 8px;font-size:14px;color:#d4d4d4;">✅ &nbsp;Pipeline e controle financeiro</p>
+                  <p style="margin:0;font-size:14px;color:#d4d4d4;">✅ &nbsp;Relatórios e métricas do consultório</p>
+                </td></tr>
+              </table>
+
+              <!-- Botão CTA -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td align="center">
+                  <a href="${appUrl}/dashboard" style="display:inline-block;background:#22c55e;color:#000;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:10px;letter-spacing:0.3px;">
+                    Acessar o NutriX →
+                  </a>
+                </td></tr>
+              </table>
+
+              <p style="margin:28px 0 0;font-size:13px;color:#666;text-align:center;line-height:1.6;">
+                Precisa de ajuda? Responda este e-mail ou acesse nossa central de suporte.<br>
+                Estamos aqui para garantir o seu sucesso! 🌱
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:24px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#444;">© 2026 NutriX CRM · <a href="https://crmnutrix.com.br" style="color:#22c55e;text-decoration:none;">crmnutrix.com.br</a></p>
+          <p style="margin:6px 0 0;font-size:11px;color:#333;">Você está recebendo este e-mail porque realizou uma assinatura do NutriX.</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
           }).catch((e: unknown) => console.error("[hotmart-webhook] Erro e-mail:", e));
 
         } else {
@@ -168,22 +233,91 @@ export async function POST(req: Request) {
 
           const registerUrl = `${process.env.NEXTAUTH_URL || "https://app.crmnutrix.com.br"}/register?email=${encodeURIComponent(buyerEmail)}&plan=${encodeURIComponent(planName)}`;
 
+          const firstName = buyerName ? buyerName.split(" ")[0] : "";
           await getResend()?.emails.send({
-            from: "NutriX <noreply@crmnutrix.com.br>",
+            from: "NutriX CRM <noreply@crmnutrix.com.br>",
             to: buyerEmail,
-            subject: "✅ Pagamento aprovado! Crie sua conta no NutriX",
-            html: `
-              <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#080808;color:#fff;padding:32px;border-radius:12px;">
-                <h1 style="color:#22c55e;font-size:24px;margin-bottom:8px;">Pagamento aprovado! 🎉</h1>
-                <p style="color:#a1a1a1;font-size:16px;">Olá${buyerName ? `, ${buyerName.split(" ")[0]}` : ""}! Recebemos seu pagamento do plano <strong style="color:#fff;">${planName}</strong>.</p>
-                <p style="color:#a1a1a1;font-size:15px;">Clique abaixo para criar sua conta — sua assinatura será ativada automaticamente!</p>
-                <a href="${registerUrl}"
-                  style="display:inline-block;margin-top:20px;background:#22c55e;color:#000;font-weight:bold;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:15px;">
-                  Criar minha conta
-                </a>
-                <p style="color:#444;font-size:12px;margin-top:32px;">NutriX CRM · crmnutrix.com.br</p>
-              </div>
-            `,
+            subject: "🎉 Pagamento confirmado! Crie sua conta no NutriX",
+            html: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0f0f0f;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+
+        <!-- Logo -->
+        <tr><td align="center" style="padding-bottom:32px;">
+          <span style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-1px;">Nutri</span><span style="font-size:32px;font-weight:900;color:#22c55e;letter-spacing:-1px;">X</span>
+          <p style="margin:4px 0 0;font-size:11px;letter-spacing:3px;color:#22c55e;text-transform:uppercase;font-weight:600;">CRM para Nutricionistas</p>
+        </td></tr>
+
+        <!-- Card principal -->
+        <tr><td style="background:#161616;border-radius:16px;border:1px solid #2a2a2a;overflow:hidden;">
+
+          <!-- Header -->
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="background:linear-gradient(135deg,#16a34a,#22c55e);padding:32px;text-align:center;">
+              <p style="margin:0;font-size:40px;">✅</p>
+              <h1 style="margin:12px 0 4px;font-size:24px;font-weight:800;color:#fff;">Pagamento Confirmado!</h1>
+              <p style="margin:0;font-size:15px;color:rgba(255,255,255,0.85);">Agora é só criar sua conta para começar</p>
+            </td></tr>
+          </table>
+
+          <!-- Corpo -->
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;color:#e5e5e5;">
+                Olá${firstName ? `, <strong style="color:#fff;">${firstName}</strong>` : ""}! 👋
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;color:#a1a1a1;line-height:1.6;">
+                Recebemos a confirmação do seu pagamento do plano <strong style="color:#22c55e;">${planName}</strong>. Que ótima escolha! 🌱
+              </p>
+              <p style="margin:0 0 28px;font-size:15px;color:#a1a1a1;line-height:1.6;">
+                Para ativar seu acesso, basta criar sua conta no NutriX usando <strong style="color:#fff;">este mesmo e-mail</strong>. Leva menos de 2 minutos e sua assinatura será ativada automaticamente!
+              </p>
+
+              <!-- Passos -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:10px;border:1px solid #2a2a2a;margin-bottom:28px;">
+                <tr><td style="padding:20px;">
+                  <p style="margin:0 0 14px;font-size:11px;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:2px;">Como ativar em 3 passos</p>
+                  <p style="margin:0 0 10px;font-size:14px;color:#d4d4d4;">① &nbsp;Clique no botão abaixo</p>
+                  <p style="margin:0 0 10px;font-size:14px;color:#d4d4d4;">② &nbsp;Preencha seus dados usando <strong style="color:#fff;">este e-mail</strong></p>
+                  <p style="margin:0;font-size:14px;color:#d4d4d4;">③ &nbsp;Pronto! Acesso liberado na hora 🎉</p>
+                </td></tr>
+              </table>
+
+              <!-- Botão CTA -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td align="center">
+                  <a href="${registerUrl}" style="display:inline-block;background:#22c55e;color:#000;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:10px;letter-spacing:0.3px;">
+                    Criar minha conta →
+                  </a>
+                </td></tr>
+              </table>
+
+              <p style="margin:20px 0 0;font-size:12px;color:#555;text-align:center;">
+                Ou acesse diretamente: <a href="${registerUrl}" style="color:#22c55e;text-decoration:none;">${registerUrl}</a>
+              </p>
+
+              <p style="margin:24px 0 0;font-size:13px;color:#666;text-align:center;line-height:1.6;">
+                Alguma dúvida? Responda este e-mail que te ajudamos. 😊
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:24px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#444;">© 2026 NutriX CRM · <a href="https://crmnutrix.com.br" style="color:#22c55e;text-decoration:none;">crmnutrix.com.br</a></p>
+          <p style="margin:6px 0 0;font-size:11px;color:#333;">Você está recebendo este e-mail porque realizou uma compra na Hotmart.</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
           }).catch((e: unknown) => console.error("[hotmart-webhook] Erro e-mail novo comprador:", e));
         }
       } catch (e) {
