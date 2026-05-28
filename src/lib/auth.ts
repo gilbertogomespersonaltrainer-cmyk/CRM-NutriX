@@ -16,6 +16,7 @@ export const authOptions: NextAuthOptions = {
 
         const tenant = await prisma.tenant.findUnique({
           where: { email: credentials.email },
+          include: { subscription: true },
         });
 
         if (!tenant) return null;
@@ -32,6 +33,8 @@ export const authOptions: NextAuthOptions = {
           email: tenant.email,
           name: tenant.name,
           clinicName: tenant.clinicName || undefined,
+          subscriptionStatus: tenant.subscription?.status ?? "TRIAL",
+          trialEndsAt: tenant.subscription?.trialEndsAt?.toISOString() ?? null,
         };
       },
     }),
@@ -41,14 +44,17 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.clinicName = (user as { clinicName?: string }).clinicName;
+        token.subscriptionStatus = (user as { subscriptionStatus?: string }).subscriptionStatus;
+        token.trialEndsAt = (user as { trialEndsAt?: string | null }).trialEndsAt;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as { id: string }).id = token.id as string;
-        (session.user as { clinicName?: string }).clinicName =
-          token.clinicName as string;
+        (session.user as { clinicName?: string }).clinicName = token.clinicName as string;
+        (session.user as { subscriptionStatus?: string }).subscriptionStatus = token.subscriptionStatus as string;
+        (session.user as { trialEndsAt?: string | null }).trialEndsAt = token.trialEndsAt as string | null;
       }
       return session;
     },

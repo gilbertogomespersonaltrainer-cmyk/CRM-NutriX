@@ -71,6 +71,19 @@ export async function POST(req: Request) {
       data: defaultTemplates.map((t) => ({ ...t, tenantId: tenant.id })),
     });
 
+    // Create 7-day trial subscription
+    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await prisma.subscription.create({
+      data: {
+        tenantId: tenant.id,
+        planId: await prisma.plan
+          .findFirst({ where: { isActive: true }, orderBy: { sortOrder: "asc" } })
+          .then((p) => p?.id ?? ""),
+        status: "TRIAL",
+        trialEndsAt,
+      },
+    });
+
     return NextResponse.json(
       { id: tenant.id, name: tenant.name, email: tenant.email },
       { status: 201 }
