@@ -709,7 +709,7 @@ export default function ConfiguracoesPage() {
             {
               type: "FOLLOWUP",
               label: "Follow-up de Inativo",
-              default: "Olá {nome_paciente}! Faz um tempo que não nos vemos. Que tal agendar uma consulta com {nome_nutricionista}?",
+              default: "Olá {nome_paciente}! Tudo bem com você? 😊 Estava pensando em você e quis dar um oi. Como você está se sentindo em relação à sua alimentação ultimamente? Estou aqui se precisar de mim! 🌱",
             },
           ].map((tmpl) => {
             const existing = templates.find((t) => t.type === tmpl.type);
