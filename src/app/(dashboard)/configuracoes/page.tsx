@@ -691,10 +691,26 @@ export default function ConfiguracoesPage() {
             Variáveis disponíveis: <span className="text-[#22c55e]">{"{nome_paciente}"}</span>, <span className="text-[#22c55e]">{"{data_consulta}"}</span>, <span className="text-[#22c55e]">{"{hora_consulta}"}</span>, <span className="text-[#22c55e]">{"{tipo_consulta}"}</span>, <span className="text-[#22c55e]">{"{nome_nutricionista}"}</span>, <span className="text-[#22c55e]">{"{nome_clinica}"}</span>
           </p>
           {[
-            { type: "CONFIRMATION", label: "Confirmação de Consulta" },
-            { type: "REMINDER_8D", label: "Lembrete 8 Dias Antes" },
-            { type: "REMINDER", label: "Lembrete 24h Antes" },
-            { type: "FOLLOWUP", label: "Follow-up de Inativo" },
+            {
+              type: "CONFIRMATION",
+              label: "Confirmação de Consulta",
+              default: "Olá {nome_paciente}! Sua {tipo_consulta} com {nome_nutricionista} está confirmada para {data_consulta} às {hora_consulta}. Qualquer dúvida, estou à disposição! 😊",
+            },
+            {
+              type: "REMINDER_8D",
+              label: "Lembrete 8 Dias Antes",
+              default: "Olá {nome_paciente}! Passando para lembrar que sua {tipo_consulta} com {nome_nutricionista} está agendada para {data_consulta} às {hora_consulta}. Confirme sua presença respondendo esta mensagem! 😊",
+            },
+            {
+              type: "REMINDER",
+              label: "Lembrete 24h Antes",
+              default: "Olá {nome_paciente}! Lembrando que você tem {tipo_consulta} amanhã, {data_consulta} às {hora_consulta} com {nome_nutricionista}. Até lá! 👋",
+            },
+            {
+              type: "FOLLOWUP",
+              label: "Follow-up de Inativo",
+              default: "Olá {nome_paciente}! Faz um tempo que não nos vemos. Que tal agendar uma consulta com {nome_nutricionista}?",
+            },
           ].map((tmpl) => {
             const existing = templates.find((t) => t.type === tmpl.type);
             return (
@@ -705,7 +721,7 @@ export default function ConfiguracoesPage() {
                 <CardContent>
                   <TemplateEditor
                     type={tmpl.type}
-                    initialContent={existing?.content || ""}
+                    initialContent={existing?.content || tmpl.default}
                     onSave={saveTemplate}
                   />
                 </CardContent>
