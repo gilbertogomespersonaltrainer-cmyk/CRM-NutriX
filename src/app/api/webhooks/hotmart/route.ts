@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Inicialização lazy para não crashar se RESEND_API_KEY não estiver definida
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
 
 // Mapeamento: código da oferta Hotmart → nome do plano NutriX
 const OFFER_PLAN_MAP: Record<string, string> = {
@@ -130,7 +135,7 @@ export async function POST(req: Request) {
           await logPurchase(buyerEmail, planName, offerCode, transactionId, event, new Date());
 
           // E-mail de confirmação
-          await resend.emails.send({
+          await getResend()?.emails.send({
             from: "NutriX <noreply@crmnutrix.com.br>",
             to: buyerEmail,
             subject: "✅ Assinatura NutriX ativada com sucesso!",
@@ -155,7 +160,7 @@ export async function POST(req: Request) {
 
           const registerUrl = `${process.env.NEXTAUTH_URL || "https://app.crmnutrix.com.br"}/register?email=${encodeURIComponent(buyerEmail)}&plan=${encodeURIComponent(planName)}`;
 
-          await resend.emails.send({
+          await getResend()?.emails.send({
             from: "NutriX <noreply@crmnutrix.com.br>",
             to: buyerEmail,
             subject: "✅ Pagamento aprovado! Crie sua conta no NutriX",
