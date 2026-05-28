@@ -142,16 +142,17 @@ model Tenant {
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
-  subscription     Subscription?
-  patients         Patient[]
-  appointments     Appointment[]
-  payments         Payment[]
-  installments     Installment[]
-  transactions     Transaction[]
-  serviceTypes     ServiceType[]
-  followUpLogs     FollowUpLog[]
-  whatsAppLogs     WhatsAppLog[]
-  messageTemplates MessageTemplate[]
+  subscription        Subscription?
+  patients            Patient[]
+  appointments        Appointment[]
+  payments            Payment[]
+  installments        Installment[]
+  transactions        Transaction[]
+  serviceTypes        ServiceType[]
+  followUpLogs        FollowUpLog[]
+  whatsAppLogs        WhatsAppLog[]
+  messageTemplates    MessageTemplate[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("tenants")
 }
@@ -316,6 +317,19 @@ model WhatsAppLog {
   patient Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
 
   @@map("whatsapp_logs")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tenantId  String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }
 
 model MessageTemplate {
