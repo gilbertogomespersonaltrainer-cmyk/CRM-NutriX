@@ -363,7 +363,7 @@ export default function AgendamentosPage() {
                 <button
                   key={i}
                   onClick={() => setSelectedDay(isSelected ? null : day)}
-                  className={`border-r border-b border-[#1e1e1e] last:border-r-0 h-24 p-2 text-left transition-colors hover:bg-[#0f0f0f] ${
+                  className={`border-r border-b border-[#1e1e1e] last:border-r-0 h-28 p-2 text-left transition-colors hover:bg-[#0f0f0f] ${
                     isSelected ? "bg-[#22c55e]/5 border-[#22c55e]/20" : ""
                   } ${isToday ? "bg-[#22c55e]/[0.03]" : ""}`}
                 >
@@ -373,12 +373,15 @@ export default function AgendamentosPage() {
                     {day.getDate()}
                   </span>
                   {dayApts.length > 0 && (
-                    <div className="flex flex-wrap gap-0.5 mt-1.5">
-                      {dayApts.slice(0, 3).map((apt) => (
-                        <span key={apt.id} className={`w-2 h-2 rounded-full ${STATUS_COLORS[apt.status]?.dot || "bg-[#888]"}`} />
+                    <div className="flex flex-col gap-0.5 mt-1">
+                      {dayApts.slice(0, 2).map((apt) => (
+                        <div key={apt.id} className="flex items-center gap-1 px-1 py-0.5 rounded bg-[#111] border border-[#1e1e1e] overflow-hidden">
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_COLORS[apt.status]?.dot || "bg-[#888]"}`} />
+                          <span className="text-[9px] text-[#aaa] truncate leading-tight">{apt.patient.name.split(" ")[0]}</span>
+                        </div>
                       ))}
-                      {dayApts.length > 3 && (
-                        <span className="text-[9px] text-[#555] leading-5">+{dayApts.length - 3}</span>
+                      {dayApts.length > 2 && (
+                        <span className="text-[9px] text-[#555] pl-1">+{dayApts.length - 2} mais</span>
                       )}
                     </div>
                   )}
