@@ -50,6 +50,22 @@ type Template = {
 };
 
 const LOGO_KEY = "nutrix_logo";
+const BRAND_COLOR_KEY = "nutrix_brand_color";
+
+const PALETTE_COLORS = [
+  { hex: "#15803d", label: "Verde escuro" },
+  { hex: "#22c55e", label: "Verde" },
+  { hex: "#0ea5e9", label: "Azul céu" },
+  { hex: "#3b82f6", label: "Azul" },
+  { hex: "#6366f1", label: "Índigo" },
+  { hex: "#8b5cf6", label: "Roxo" },
+  { hex: "#ec4899", label: "Rosa" },
+  { hex: "#f97316", label: "Laranja" },
+  { hex: "#f59e0b", label: "Âmbar" },
+  { hex: "#ef4444", label: "Vermelho" },
+  { hex: "#14b8a6", label: "Teal" },
+  { hex: "#1e293b", label: "Preto azulado" },
+];
 
 export default function ConfiguracoesPage() {
   const [settings, setSettings] = useState<TenantSettings | null>(null);
@@ -59,6 +75,7 @@ export default function ConfiguracoesPage() {
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"profile" | "services" | "whatsapp" | "templates">("profile");
   const [logo, setLogo] = useState<string>("");
+  const [brandColor, setBrandColor] = useState<string>("#15803d");
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // WhatsApp state
@@ -72,6 +89,8 @@ export default function ConfiguracoesPage() {
   useEffect(() => {
     const saved = localStorage.getItem(LOGO_KEY);
     if (saved) setLogo(saved);
+    const savedColor = localStorage.getItem(BRAND_COLOR_KEY);
+    if (savedColor) setBrandColor(savedColor);
   }, []);
 
   function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -376,6 +395,62 @@ export default function ConfiguracoesPage() {
                 className="hidden"
                 onChange={handleLogoUpload}
               />
+            </CardContent>
+          </Card>
+
+          {/* Cor da marca */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Cor da Marca</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-xs text-[#666]">
+                Escolha a cor principal do seu consultório. Ela será aplicada nos documentos gerados.
+              </p>
+              <div className="grid grid-cols-6 gap-2">
+                {PALETTE_COLORS.map((c) => (
+                  <button
+                    key={c.hex}
+                    type="button"
+                    title={c.label}
+                    onClick={() => {
+                      setBrandColor(c.hex);
+                      localStorage.setItem(BRAND_COLOR_KEY, c.hex);
+                      toast({ title: "Cor salva!", variant: "success" });
+                    }}
+                    className="relative h-10 w-full rounded-lg border-2 transition-all"
+                    style={{
+                      backgroundColor: c.hex,
+                      borderColor: brandColor === c.hex ? "#fff" : "transparent",
+                      boxShadow: brandColor === c.hex ? `0 0 0 2px ${c.hex}` : "none",
+                    }}
+                  >
+                    {brandColor === c.hex && (
+                      <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <label className="text-xs text-[#666]">Cor personalizada:</label>
+                <div className="relative">
+                  <input
+                    type="color"
+                    value={brandColor}
+                    onChange={(e) => {
+                      setBrandColor(e.target.value);
+                      localStorage.setItem(BRAND_COLOR_KEY, e.target.value);
+                    }}
+                    className="h-9 w-16 cursor-pointer rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] p-1"
+                  />
+                </div>
+                <div
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#1e1e1e] text-xs text-[#888]"
+                  style={{ borderLeftColor: brandColor, borderLeftWidth: "3px" }}
+                >
+                  <span>{brandColor.toUpperCase()}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </form>

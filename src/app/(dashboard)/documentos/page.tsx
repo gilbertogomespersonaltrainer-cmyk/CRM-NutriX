@@ -31,12 +31,14 @@ function formatDate(iso: string) {
 
 const SIGNATURE_KEY = "nutrix_signature";
 const LOGO_KEY = "nutrix_logo";
+const BRAND_COLOR_KEY = "nutrix_brand_color";
 
 export default function DocumentosPage() {
   const [tab, setTab] = useState<Tab>("recibo");
   const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [signature, setSignature] = useState<string>("");
   const [logo, setLogo] = useState<string>("");
+  const [brandColor, setBrandColor] = useState<string>("#15803d");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Recibo form
@@ -69,6 +71,8 @@ export default function DocumentosPage() {
     if (saved) setSignature(saved);
     const savedLogo = localStorage.getItem(LOGO_KEY);
     if (savedLogo) setLogo(savedLogo);
+    const savedColor = localStorage.getItem(BRAND_COLOR_KEY);
+    if (savedColor) setBrandColor(savedColor);
   }, []);
 
   function handleSignatureUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -331,7 +335,7 @@ export default function DocumentosPage() {
               {/* Header */}
               <div style={{ borderBottom: "2px solid #16a34a", paddingBottom: "20px", marginBottom: "28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px" }}>
                 <div>
-                  <h1 style={{ fontSize: "22px", fontWeight: "bold", color: "#15803d", margin: 0, fontFamily: "sans-serif" }}>
+                  <h1 style={{ fontSize: "22px", fontWeight: "bold", color: brandColor, margin: 0, fontFamily: "sans-serif" }}>
                     {clinicName}
                   </h1>
                   {profissional && (
