@@ -44,7 +44,7 @@ export async function proxy(request: NextRequest) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      return NextResponse.redirect(new URL("/admin-login", request.url));
+      return NextResponse.redirect(new URL("/admin/login", request.url));
     }
     return NextResponse.next();
   }
@@ -78,14 +78,24 @@ export async function proxy(request: NextRequest) {
       if (token) {
         const status = token.subscriptionStatus as string | undefined;
         const trialEndsAt = token.trialEndsAt as string | null | undefined;
+        const expiresAt = token.expiresAt as string | null | undefined;
 
         const trialExpired =
           status === "TRIAL" &&
           trialEndsAt &&
           new Date(trialEndsAt) < new Date();
 
+        const activeExpired =
+          status === "ACTIVE" &&
+          expiresAt &&
+          new Date(expiresAt) < new Date();
+
         const blocked =
-          trialExpired || status === "EXPIRED" || status === "CANCELLED";
+          trialExpired ||
+          activeExpired ||
+          status === "EXPIRED" ||
+          status === "CANCELLED" ||
+          status === "PAST_DUE";
 
         if (blocked && pathname !== "/plano-expirado") {
           return NextResponse.redirect(new URL("/plano-expirado", request.url));

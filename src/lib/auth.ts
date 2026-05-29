@@ -35,6 +35,7 @@ export const authOptions: NextAuthOptions = {
           clinicName: tenant.clinicName || undefined,
           subscriptionStatus: tenant.subscription?.status ?? "TRIAL",
           trialEndsAt: tenant.subscription?.trialEndsAt?.toISOString() ?? null,
+          expiresAt: tenant.subscription?.expiresAt?.toISOString() ?? null,
         };
       },
     }),
@@ -42,11 +43,36 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // Login fresh — carrega dados do banco
         token.id = user.id;
         token.clinicName = user.clinicName;
         token.subscriptionStatus = user.subscriptionStatus;
         token.trialEndsAt = user.trialEndsAt;
+        token.expiresAt = user.expiresAt;
+        token.lastRefreshed = Date.now();
+        return token;
       }
+
+      // Atualiza status da assinatura a cada 5 minutos
+      const FIVE_MINUTES = 5 * 60 * 1000;
+      const lastRefreshed = (token.lastRefreshed as number) || 0;
+      if (Date.now() - lastRefreshed > FIVE_MINUTES) {
+        try {
+          const tenant = await prisma.tenant.findUnique({
+            where: { id: token.id as string },
+            select: { subscription: { select: { status: true, trialEndsAt: true, expiresAt: true } } },
+          });
+          if (tenant?.subscription) {
+            token.subscriptionStatus = tenant.subscription.status;
+            token.trialEndsAt = tenant.subscription.trialEndsAt?.toISOString() ?? null;
+            token.expiresAt = tenant.subscription.expiresAt?.toISOString() ?? null;
+          }
+        } catch {
+          // Mantém dados anteriores se o banco falhar
+        }
+        token.lastRefreshed = Date.now();
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -55,6 +81,7 @@ export const authOptions: NextAuthOptions = {
         session.user.clinicName = token.clinicName;
         session.user.subscriptionStatus = token.subscriptionStatus;
         session.user.trialEndsAt = token.trialEndsAt;
+        session.user.expiresAt = token.expiresAt;
       }
       return session;
     },

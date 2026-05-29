@@ -9,6 +9,7 @@ declare module "next-auth" {
       clinicName?: string;
       subscriptionStatus?: string;
       trialEndsAt?: string | null;
+      expiresAt?: string | null;
     };
   }
 
@@ -17,6 +18,7 @@ declare module "next-auth" {
     clinicName?: string;
     subscriptionStatus?: string;
     trialEndsAt?: string | null;
+    expiresAt?: string | null;
   }
 }
 
@@ -26,5 +28,7 @@ declare module "next-auth/jwt" {
     clinicName?: string;
     subscriptionStatus?: string;
     trialEndsAt?: string | null;
+    expiresAt?: string | null;
+    lastRefreshed?: number;
   }
 }

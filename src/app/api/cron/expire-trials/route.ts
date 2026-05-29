@@ -7,16 +7,28 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Marca como EXPIRED todos os trials cujo prazo já passou
-  const result = await prisma.subscription.updateMany({
+  const now = new Date();
+
+  // Expira trials vencidos
+  const expiredTrials = await prisma.subscription.updateMany({
     where: {
       status: "TRIAL",
-      trialEndsAt: { lt: new Date() },
+      trialEndsAt: { lt: now },
     },
     data: { status: "EXPIRED" },
   });
 
-  console.log(`[expire-trials] ${result.count} trial(s) expirado(s)`);
+  // Expira assinaturas ACTIVE com expiresAt vencido
+  const expiredActive = await prisma.subscription.updateMany({
+    where: {
+      status: "ACTIVE",
+      expiresAt: { lt: now },
+      NOT: { expiresAt: null },
+    },
+    data: { status: "EXPIRED" },
+  });
 
-  return NextResponse.json({ expired: result.count });
+  console.log(`[expire-trials] ${expiredTrials.count} trial(s) expirado(s), ${expiredActive.count} assinatura(s) ACTIVE expirada(s)`);
+
+  return NextResponse.json({ expiredTrials: expiredTrials.count, expiredActive: expiredActive.count });
 }
