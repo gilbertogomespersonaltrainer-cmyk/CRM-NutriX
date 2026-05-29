@@ -24,9 +24,13 @@ const protectedPaths = [
 const adminProtectedPaths = [
   "/admin/dashboard",
   "/admin/assinantes",
+  "/admin/financeiro",
+  "/admin/relatorios",
   "/admin/planos",
   "/api/admin/dashboard",
   "/api/admin/tenants",
+  "/api/admin/financeiro",
+  "/api/admin/relatorios",
   "/api/admin/plans",
 ];
 
@@ -44,7 +48,7 @@ export async function proxy(request: NextRequest) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      return NextResponse.redirect(new URL("/admin-login", request.url));
     }
     return NextResponse.next();
   }
