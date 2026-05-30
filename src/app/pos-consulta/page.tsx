@@ -65,7 +65,7 @@ export default function PosConsultaPage() {
       <div>
         <h1 className="font-outfit text-2xl font-bold text-white">Pós Consulta</h1>
         <p className="text-sm text-[#666] mt-1">
-          Envio automático de mensagem WhatsApp após as consultas dos seus pacientes.
+          Envio automático semanal de mensagem WhatsApp para todos os pacientes ativos em acompanhamento.
         </p>
       </div>
 
@@ -119,7 +119,7 @@ export default function PosConsultaPage() {
 
           {/* Dias após consulta */}
           <div className="space-y-3">
-            <Label className="text-[#888]">Enviar quantos dias após a consulta?</Label>
+            <Label className="text-[#888]">Iniciar envio quantos dias após a última consulta?</Label>
             <div className="flex flex-wrap gap-2">
               {DAYS_AFTER_OPTIONS.map((d) => (
                 <button
@@ -200,10 +200,11 @@ export default function PosConsultaPage() {
       <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
         <p className="text-xs text-[#555] leading-relaxed">
           <span className="text-[#888] font-medium">Como funciona:</span> Todo{" "}
-          <span className="text-[#22c55e]">{DAYS[settings.dayOfWeek]}</span> o sistema busca automaticamente
-          todos os pacientes com consulta concluída há{" "}
-          <span className="text-[#22c55e]">{settings.daysAfter} {settings.daysAfter === 1 ? "dia" : "dias"}</span> ou mais
-          que ainda não receberam a mensagem pós consulta, e envia via WhatsApp.
+          <span className="text-[#22c55e]">{DAYS[settings.dayOfWeek]}</span> o sistema envia automaticamente
+          para todos os pacientes <strong className="text-[#888]">ativos em acompanhamento</strong> cuja última consulta
+          foi há pelo menos{" "}
+          <span className="text-[#22c55e]">{settings.daysAfter} {settings.daysAfter === 1 ? "dia" : "dias"}</span>.
+          A mensagem se repete toda semana enquanto o paciente estiver ativo.
           O WhatsApp precisa estar conectado nas configurações.
         </p>
       </div>

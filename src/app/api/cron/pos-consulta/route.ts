@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Evolution API não configurada" }, { status: 500 });
   }
 
-  // Busca todos os tenants com pós-consulta ativado e no dia correto
+  // Busca tenants com pós-consulta ativo e configurado para hoje
   const tenants = await prisma.tenant.findMany({
     where: {
       postConsultEnabled: true,
@@ -44,34 +44,38 @@ export async function GET(req: Request) {
     const template = tenant.messageTemplates[0];
     if (!template) continue;
 
+    // Mínimo de dias após última consulta para começar a enviar
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - tenant.postConsultDaysAfter);
 
-    // Consultas concluídas há >= daysAfter dias sem pós-consulta enviado
-    const appointments = await prisma.appointment.findMany({
+    // Evita reenvio na mesma semana (6 dias de intervalo mínimo)
+    const sixDaysAgo = new Date();
+    sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+
+    // Todos os pacientes ativos em acompanhamento elegíveis
+    const patients = await prisma.patient.findMany({
       where: {
         tenantId: tenant.id,
-        status: "COMPLETED",
-        postConsultSent: false,
-        scheduledAt: { lte: cutoffDate },
+        isActive: true,
+        stage: { in: ["ACTIVE", "FIRST_CONSULTATION", "REACTIVATED"] },
+        lastAppointmentAt: { lte: cutoffDate, not: null },
+        OR: [
+          { postConsultSentAt: null },
+          { postConsultSentAt: { lt: sixDaysAgo } },
+        ],
       },
-      include: { patient: true },
     });
 
-    for (const appt of appointments) {
-      const patient = appt.patient;
-      if (!patient.phone || !patient.isActive) continue;
+    for (const patient of patients) {
+      if (!patient.phone) continue;
 
-      const message = template.content.replace(/\{nome_paciente\}/g, patient.name.split(" ")[0]);
+      const firstName = patient.name.split(" ")[0];
+      const message = template.content.replace(/\{nome_paciente\}/g, firstName);
 
       try {
         await sendWhatsApp(tenant.id, apiUrl, apiKey, patient.phone, message);
 
-        // Marca como enviado
-        await prisma.appointment.update({
-          where: { id: appt.id },
-          data: { postConsultSent: true },
-        });
+        // Atualiza data do último envio
         await prisma.patient.update({
           where: { id: patient.id },
           data: { postConsultSentAt: new Date() },
@@ -90,8 +94,9 @@ export async function GET(req: Request) {
         });
 
         totalSent++;
+        console.log(`[pos-consulta] ✅ Enviado para ${patient.name} (tenant: ${tenant.id})`);
       } catch (e) {
-        console.error(`[pos-consulta] Erro ao enviar para ${patient.name}:`, e);
+        console.error(`[pos-consulta] ❌ Erro ao enviar para ${patient.name}:`, e);
         await prisma.whatsAppLog.create({
           data: {
             tenantId: tenant.id,
@@ -108,6 +113,6 @@ export async function GET(req: Request) {
     }
   }
 
-  console.log(`[pos-consulta] Enviados: ${totalSent}, Erros: ${totalErrors}`);
+  console.log(`[pos-consulta] Concluído — Enviados: ${totalSent}, Erros: ${totalErrors}`);
   return NextResponse.json({ sent: totalSent, errors: totalErrors });
 }
