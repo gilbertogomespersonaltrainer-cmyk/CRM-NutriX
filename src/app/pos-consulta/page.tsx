@@ -10,7 +10,6 @@ import { GlassIcon } from "@/components/ui/premium-icon";
 import { Loader2, Save, MessageSquare } from "lucide-react";
 
 const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-const DAYS_AFTER_OPTIONS = [1, 2, 3, 5, 7, 10, 14, 21, 30];
 
 type Settings = {
   enabled: boolean;
@@ -117,30 +116,6 @@ export default function PosConsultaPage() {
             </p>
           </div>
 
-          {/* Dias após consulta */}
-          <div className="space-y-3">
-            <Label className="text-[#888]">Iniciar envio quantos dias após a última consulta?</Label>
-            <div className="flex flex-wrap gap-2">
-              {DAYS_AFTER_OPTIONS.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setSettings((s) => ({ ...s, daysAfter: d }))}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    settings.daysAfter === d
-                      ? "bg-[#22c55e] text-black"
-                      : "bg-[#1a1a1a] text-[#666] hover:text-white border border-[#2a2a2a]"
-                  }`}
-                >
-                  {d} {d === 1 ? "dia" : "dias"}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-[#555]">
-              Pacientes com consulta concluída há pelo menos{" "}
-              <span className="text-[#22c55e]">{settings.daysAfter} {settings.daysAfter === 1 ? "dia" : "dias"}</span>{" "}
-              receberão a mensagem.
-            </p>
-          </div>
         </CardContent>
       </Card>
 
@@ -201,9 +176,8 @@ export default function PosConsultaPage() {
         <p className="text-xs text-[#555] leading-relaxed">
           <span className="text-[#888] font-medium">Como funciona:</span> Todo{" "}
           <span className="text-[#22c55e]">{DAYS[settings.dayOfWeek]}</span> o sistema envia automaticamente
-          para todos os pacientes <strong className="text-[#888]">ativos em acompanhamento</strong> cuja última consulta
-          foi há pelo menos{" "}
-          <span className="text-[#22c55e]">{settings.daysAfter} {settings.daysAfter === 1 ? "dia" : "dias"}</span>.
+          para <strong className="text-[#888]">todos os pacientes ativos em acompanhamento</strong>,
+          independente de quando foi a última consulta.
           A mensagem se repete toda semana enquanto o paciente estiver ativo.
           O WhatsApp precisa estar conectado nas configurações.
         </p>

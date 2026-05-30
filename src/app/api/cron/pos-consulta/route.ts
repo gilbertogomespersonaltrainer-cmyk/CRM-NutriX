@@ -44,21 +44,16 @@ export async function GET(req: Request) {
     const template = tenant.messageTemplates[0];
     if (!template) continue;
 
-    // Mínimo de dias após última consulta para começar a enviar
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - tenant.postConsultDaysAfter);
-
     // Evita reenvio na mesma semana (6 dias de intervalo mínimo)
     const sixDaysAgo = new Date();
     sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
 
-    // Todos os pacientes ativos em acompanhamento elegíveis
+    // Todos os pacientes ativos em acompanhamento, sem restrição de data de consulta
     const patients = await prisma.patient.findMany({
       where: {
         tenantId: tenant.id,
         isActive: true,
         stage: { in: ["ACTIVE", "FIRST_CONSULTATION", "REACTIVATED"] },
-        lastAppointmentAt: { lte: cutoffDate, not: null },
         OR: [
           { postConsultSentAt: null },
           { postConsultSentAt: { lt: sixDaysAgo } },
