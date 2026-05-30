@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/expire-trials",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/pos-consulta",
+      "schedule": "0 9 * * *"
     }
   ]
 }

@@ -19,6 +19,8 @@ const protectedPaths = [
   "/api/follow-up",
   "/api/templates",
   "/api/whatsapp",
+  "/api/pos-consulta",
+  "/pos-consulta",
 ];
 
 const adminProtectedPaths = [

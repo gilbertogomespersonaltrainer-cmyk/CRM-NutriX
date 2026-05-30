@@ -1,0 +1,3 @@
+ALTER TABLE "tenants" ADD COLUMN "postConsultEnabled" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "tenants" ADD COLUMN "postConsultDayOfWeek" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "tenants" ADD COLUMN "postConsultDaysAfter" INTEGER NOT NULL DEFAULT 3;
