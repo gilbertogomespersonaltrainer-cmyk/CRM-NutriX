@@ -15,7 +15,7 @@ const PLANS = [
     features: [
       "Gestão de pacientes",
       "Agendamentos e financeiro",
-      "Documentos e planos",
+      "Documentos",
       "Conexão WhatsApp",
       "Confirmação de consulta automática",
       "Lembretes 8 dias, 24h e 2h",
