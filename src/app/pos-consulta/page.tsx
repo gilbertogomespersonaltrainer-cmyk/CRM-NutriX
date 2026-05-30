@@ -6,8 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { GlassIcon } from "@/components/ui/premium-icon";
-import { Loader2, Save, MessageSquare } from "lucide-react";
+import { Loader2, Save, MessageSquare, Check } from "lucide-react";
 
 const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -165,7 +164,7 @@ export default function PosConsultaPage() {
         {saving ? (
           <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</>
         ) : saved ? (
-          <><GlassIcon icon="check" size="sm" /> Configurações salvas!</>
+          <><Check className="h-4 w-4" /> Configurações salvas!</>
         ) : (
           <><Save className="h-4 w-4" /> Salvar configurações</>
         )}

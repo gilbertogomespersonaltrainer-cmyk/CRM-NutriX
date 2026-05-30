@@ -16,7 +16,7 @@ const navigation = [
   { name: "Agendamentos", href: "/agendamentos", icon: "calendar" as const, variant: "cyan" as const },
   { name: "Financeiro", href: "/financeiro", icon: "dollar" as const, variant: "emerald" as const },
   { name: "Pós Consulta", href: "/pos-consulta", icon: "messageCircle" as const, variant: "green" as const },
-  { name: "Mensagens", href: "/mensagens", icon: "messageSquare" as const, variant: "green" as const },
+  { name: "Mensagens", href: "/mensagens", icon: "messageCircle" as const, variant: "green" as const },
   { name: "Documentos", href: "/documentos", icon: "fileText" as const, variant: "blue" as const },
   { name: "Configurações", href: "/configuracoes", icon: "settings" as const, variant: "blue" as const },
 ];
