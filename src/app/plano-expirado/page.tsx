@@ -32,6 +32,7 @@ const PLANS = [
       "Tudo do Essential",
       "Pacientes ilimitados",
       "Pós Consulta automático",
+      "Mensagem de aniversário",
       "Relatórios avançados",
       "Suporte prioritário",
     ],

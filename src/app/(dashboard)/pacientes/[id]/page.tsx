@@ -408,11 +408,29 @@ export default function PatientDetailPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Data de nascimento</Label>
+                <Input
+                  type="date"
+                  value={editForm.birthDate}
+                  onChange={(e) => setEditForm((p) => ({ ...p, birthDate: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>Email</Label>
                 <Input
                   type="email"
                   value={editForm.email}
                   onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Como conheceu?</Label>
+                <Input
+                  value={editForm.howFoundUs}
+                  onChange={(e) => setEditForm((p) => ({ ...p, howFoundUs: e.target.value }))}
+                  placeholder="Instagram, indicação..."
                 />
               </div>
             </div>
