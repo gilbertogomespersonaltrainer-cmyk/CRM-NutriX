@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -20,6 +21,14 @@ export default function RegisterPage() {
     phone: "",
     clinicName: "",
   });
+
+  // Pré-preenche e-mail e plano vindos do link do e-mail da Hotmart
+  useEffect(() => {
+    const emailParam = searchParams.get("email");
+    if (emailParam) {
+      setForm((prev) => ({ ...prev, email: decodeURIComponent(emailParam) }));
+    }
+  }, [searchParams]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -51,6 +60,9 @@ export default function RegisterPage() {
     }
   }
 
+  const planParam = searchParams.get("plan");
+  const comingFromHotmart = !!searchParams.get("email");
+
   return (
     <div className="space-y-8">
       {/* Logo */}
@@ -66,6 +78,18 @@ export default function RegisterPage() {
         <div className="h-px w-32 mx-auto bg-gradient-to-r from-transparent via-[#22c55e] to-transparent" />
         <p className="text-[#666] text-sm mt-3">Crie sua conta</p>
       </div>
+
+      {/* Banner Hotmart */}
+      {comingFromHotmart && (
+        <div className="bg-[#22c55e]/10 border border-[#22c55e]/30 rounded-xl px-4 py-3 text-center">
+          <p className="text-sm text-[#22c55e] font-semibold">
+            🎉 Pagamento confirmado{planParam ? ` — Plano ${planParam}` : ""}
+          </p>
+          <p className="text-xs text-[#888] mt-1">
+            Preencha seus dados abaixo para ativar seu acesso imediatamente.
+          </p>
+        </div>
+      )}
 
       {/* Form */}
       <form
@@ -113,7 +137,12 @@ export default function RegisterPage() {
             value={form.email}
             onChange={handleChange}
             required
+            readOnly={comingFromHotmart}
+            className={comingFromHotmart ? "opacity-75 cursor-not-allowed" : ""}
           />
+          {comingFromHotmart && (
+            <p className="text-xs text-[#22c55e]">✓ E-mail confirmado pela Hotmart</p>
+          )}
         </div>
 
         <div className="space-y-2">
