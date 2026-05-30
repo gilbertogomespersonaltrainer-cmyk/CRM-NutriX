@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { AlertCircle, ExternalLink, LogOut, Check, Zap } from "lucide-react";
 
 const PLANS = [
@@ -34,7 +34,33 @@ const PLANS = [
   },
 ];
 
+function getStatusMessage(status?: string) {
+  switch (status) {
+    case "CANCELLED":
+      return {
+        title: "Sua assinatura foi cancelada",
+        subtitle: "Renove agora para recuperar o acesso completo aos seus pacientes e dados.",
+      };
+    case "PAST_DUE":
+      return {
+        title: "Pagamento pendente",
+        subtitle: "Houve um problema com seu pagamento. Renove sua assinatura para recuperar o acesso.",
+      };
+    case "EXPIRED":
+    default:
+      return {
+        title: "Seu acesso expirou",
+        subtitle: "Escolha um plano para continuar com acesso a todos os seus pacientes e dados.",
+      };
+  }
+}
+
 export default function PlanoExpiradoPage() {
+  const { data: session } = useSession();
+  const status = session?.user?.subscriptionStatus;
+  const firstName = session?.user?.name?.split(" ")[0];
+  const { title, subtitle } = getStatusMessage(status);
+
   return (
     <div className="min-h-screen bg-[#080808] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-2xl space-y-8">
@@ -58,12 +84,12 @@ export default function PlanoExpiradoPage() {
               <AlertCircle className="h-7 w-7 text-[#f97316]" />
             </div>
           </div>
-          <h1 className="text-white font-bold text-2xl">
-            Seu período de teste encerrou
-          </h1>
+          {firstName && (
+            <p className="text-[#888] text-sm">Olá, <span className="text-white font-medium">{firstName}</span> 👋</p>
+          )}
+          <h1 className="text-white font-bold text-2xl">{title}</h1>
           <p className="text-[#666] text-sm leading-relaxed max-w-sm mx-auto">
-            Os 7 dias gratuitos chegaram ao fim. Escolha um plano para continuar
-            com acesso a todos os seus pacientes e dados.
+            {subtitle}
           </p>
         </div>
 
