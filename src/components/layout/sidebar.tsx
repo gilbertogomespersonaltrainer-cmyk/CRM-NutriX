@@ -18,6 +18,7 @@ const navigation = [
   { name: "Pós Consulta", href: "/pos-consulta", icon: "messageCircle" as const, variant: "green" as const },
   { name: "Mensagens", href: "/mensagens", icon: "messageCircle" as const, variant: "green" as const },
   { name: "Documentos", href: "/documentos", icon: "fileText" as const, variant: "blue" as const },
+  { name: "Relatórios", href: "/relatorios", icon: "trendingUp" as const, variant: "emerald" as const },
   { name: "Configurações", href: "/configuracoes", icon: "settings" as const, variant: "blue" as const },
 ];
 
