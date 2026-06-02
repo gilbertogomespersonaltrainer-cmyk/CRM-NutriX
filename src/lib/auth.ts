@@ -16,7 +16,7 @@ export const authOptions: NextAuthOptions = {
 
         const tenant = await prisma.tenant.findUnique({
           where: { email: credentials.email },
-          include: { subscription: true },
+          include: { subscription: { include: { plan: true } } },
         });
 
         if (!tenant) return null;
@@ -34,6 +34,7 @@ export const authOptions: NextAuthOptions = {
           name: tenant.name,
           clinicName: tenant.clinicName || undefined,
           subscriptionStatus: tenant.subscription?.status ?? "TRIAL",
+          subscriptionPlan: tenant.subscription?.plan?.name ?? "Essential",
           trialEndsAt: tenant.subscription?.trialEndsAt?.toISOString() ?? null,
           expiresAt: tenant.subscription?.expiresAt?.toISOString() ?? null,
         };
@@ -47,6 +48,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.clinicName = user.clinicName;
         token.subscriptionStatus = user.subscriptionStatus;
+        token.subscriptionPlan = user.subscriptionPlan;
         token.trialEndsAt = user.trialEndsAt;
         token.expiresAt = user.expiresAt;
         token.lastRefreshed = Date.now();
@@ -60,10 +62,11 @@ export const authOptions: NextAuthOptions = {
         try {
           const tenant = await prisma.tenant.findUnique({
             where: { id: token.id as string },
-            select: { subscription: { select: { status: true, trialEndsAt: true, expiresAt: true } } },
+            select: { subscription: { select: { status: true, trialEndsAt: true, expiresAt: true, plan: { select: { name: true } } } } },
           });
           if (tenant?.subscription) {
             token.subscriptionStatus = tenant.subscription.status;
+            token.subscriptionPlan = tenant.subscription.plan?.name ?? token.subscriptionPlan;
             token.trialEndsAt = tenant.subscription.trialEndsAt?.toISOString() ?? null;
             token.expiresAt = tenant.subscription.expiresAt?.toISOString() ?? null;
           }
@@ -80,6 +83,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id;
         session.user.clinicName = token.clinicName;
         session.user.subscriptionStatus = token.subscriptionStatus;
+        session.user.subscriptionPlan = token.subscriptionPlan as string | undefined;
         session.user.trialEndsAt = token.trialEndsAt;
         session.user.expiresAt = token.expiresAt;
       }
