@@ -80,6 +80,13 @@ export async function sendTextMessage(
 
 export async function deleteInstance(tenantId: string) {
   const name = instanceName(tenantId);
+  // Evolution API v2 usa logout + delete em sequência
+  try {
+    await fetch(`${EVOLUTION_API_URL}/instance/logout/${name}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+  } catch { /* ignora */ }
   const res = await fetch(`${EVOLUTION_API_URL}/instance/delete/${name}`, {
     method: "DELETE",
     headers: getHeaders(),

@@ -26,22 +26,25 @@ export async function POST() {
     const instanceResult = await createInstance(tenantId);
     console.log("[whatsapp/connect] createInstance:", JSON.stringify(instanceResult));
 
-    // Aguarda 2s para o QR code ser gerado
-    await sleep(2000);
-
-    // Busca o QR code
-    const qrData = await getQRCode(tenantId);
-    console.log("[whatsapp/connect] getQRCode:", JSON.stringify(qrData));
-
-    // Extrai base64 de diferentes formatos da Evolution API
-    const base64 =
-      qrData?.base64 ??
-      qrData?.qrcode?.base64 ??
+    // Tenta extrair base64 direto da criação da instância (Evolution API v2)
+    let base64 =
       instanceResult?.qrcode?.base64 ??
       instanceResult?.base64;
 
     if (!base64) {
-      console.error("[whatsapp/connect] base64 não encontrado na resposta:", JSON.stringify({ qrData, instanceResult }));
+      // Aguarda 3s e tenta buscar o QR code separadamente
+      await sleep(3000);
+      const qrData = await getQRCode(tenantId);
+      console.log("[whatsapp/connect] getQRCode:", JSON.stringify(qrData));
+
+      base64 =
+        qrData?.base64 ??
+        qrData?.qrcode?.base64 ??
+        qrData?.code; // alguns formatos retornam o código raw
+    }
+
+    if (!base64) {
+      console.error("[whatsapp/connect] base64 não encontrado. instanceResult:", JSON.stringify(instanceResult));
       return NextResponse.json(
         { error: "QR Code não disponível. Tente novamente em alguns segundos." },
         { status: 422 }
