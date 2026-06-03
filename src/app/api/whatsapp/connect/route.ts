@@ -7,8 +7,11 @@ export async function POST() {
   try {
     const tenantId = await getTenantId();
 
-    await createInstance(tenantId);
+    const instanceResult = await createInstance(tenantId);
+    console.log("[whatsapp/connect] createInstance:", JSON.stringify(instanceResult));
+
     const qrData = await getQRCode(tenantId);
+    console.log("[whatsapp/connect] getQRCode:", JSON.stringify(qrData));
 
     await prisma.tenant.update({
       where: { id: tenantId },
@@ -16,7 +19,8 @@ export async function POST() {
     });
 
     return NextResponse.json(qrData);
-  } catch {
-    return NextResponse.json({ error: "Erro ao conectar WhatsApp" }, { status: 500 });
+  } catch (err) {
+    console.error("[whatsapp/connect] error:", err);
+    return NextResponse.json({ error: "Erro ao conectar WhatsApp", detail: String(err) }, { status: 500 });
   }
 }
