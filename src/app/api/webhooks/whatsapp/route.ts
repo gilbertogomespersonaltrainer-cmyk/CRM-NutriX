@@ -3,16 +3,6 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    // Valida secret apenas se a env var estiver configurada
-    const expectedSecret = process.env.WHATSAPP_WEBHOOK_SECRET;
-    if (expectedSecret) {
-      const secret = req.headers.get("x-webhook-secret");
-      if (secret !== expectedSecret) {
-        console.warn("[webhook/whatsapp] secret inválido, rejeitando");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    }
-
     const body = await req.json();
     console.log("[webhook/whatsapp] event:", body.event, "instance:", body.instance);
 
