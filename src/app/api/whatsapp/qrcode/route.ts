@@ -11,7 +11,7 @@ export async function GET() {
       select: { whatsappQRCode: true, whatsappStatus: true },
     });
 
-    // 1) Se o webhook já salvou o QR code no banco, retorna direto
+    // 1) Webhook já salvou o QR code no banco
     if (tenant?.whatsappQRCode) {
       return NextResponse.json({
         base64: tenant.whatsappQRCode,
@@ -19,13 +19,12 @@ export async function GET() {
       });
     }
 
-    // 2) Se está conectando mas o webhook ainda não chegou, tenta buscar direto na Evolution API
+    // 2) Tenta buscar direto na Evolution API (dentro do timeout de 10s do Vercel)
     if (tenant?.whatsappStatus === "CONNECTING") {
       try {
         const qrData = await getQRCode(tenantId);
-        console.log("[whatsapp/qrcode] direct API result:", JSON.stringify(qrData).slice(0, 300));
+        console.log("[whatsapp/qrcode] Evolution API response:", JSON.stringify(qrData).slice(0, 300));
 
-        // Evolution API v2 pode retornar em vários formatos
         const base64 =
           qrData?.base64 ??
           qrData?.qrcode?.base64 ??
@@ -33,8 +32,7 @@ export async function GET() {
           qrData?.data?.qrcode?.base64 ??
           null;
 
-        if (base64) {
-          // Salva no banco para próximas requisições
+        if (base64 && base64.length > 100) {
           await prisma.tenant.update({
             where: { id: tenantId },
             data: { whatsappQRCode: base64 },
@@ -42,7 +40,7 @@ export async function GET() {
           return NextResponse.json({ base64, status: "CONNECTING" });
         }
       } catch (e) {
-        console.warn("[whatsapp/qrcode] direct API error:", e);
+        console.warn("[whatsapp/qrcode] Evolution API error:", e);
       }
     }
 
