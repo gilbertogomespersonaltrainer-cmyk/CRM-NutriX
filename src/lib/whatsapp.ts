@@ -20,6 +20,8 @@ export function formatBrazilianPhone(phone: string): string {
 
 export async function createInstance(tenantId: string) {
   const name = instanceName(tenantId);
+  const webhookUrl = `${process.env.NEXTAUTH_URL}/api/webhooks/whatsapp`;
+  console.log("[whatsapp] createInstance webhookUrl:", webhookUrl);
   const res = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
     method: "POST",
     headers: getHeaders(),
@@ -28,11 +30,11 @@ export async function createInstance(tenantId: string) {
       integration: "WHATSAPP-BAILEYS",
       qrcode: true,
       webhook: {
-        url: `${process.env.NEXTAUTH_URL}/api/webhooks/whatsapp`,
-        events: ["connection.update", "qrcode.updated"],
-        headers: {
-          "x-webhook-secret": process.env.WHATSAPP_WEBHOOK_SECRET,
-        },
+        enabled: true,
+        url: webhookUrl,
+        webhookByEvents: false,
+        webhookBase64: true,
+        events: ["QRCODE_UPDATED", "CONNECTION_UPDATE"],
       },
     }),
   });

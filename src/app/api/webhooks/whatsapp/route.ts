@@ -3,9 +3,14 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    const secret = req.headers.get("x-webhook-secret");
-    if (secret !== process.env.WHATSAPP_WEBHOOK_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Valida secret apenas se a env var estiver configurada
+    const expectedSecret = process.env.WHATSAPP_WEBHOOK_SECRET;
+    if (expectedSecret) {
+      const secret = req.headers.get("x-webhook-secret");
+      if (secret !== expectedSecret) {
+        console.warn("[webhook/whatsapp] secret inválido, rejeitando");
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
     const body = await req.json();
@@ -18,8 +23,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid instance" }, { status: 400 });
     }
 
+    // Normaliza event name para lowercase (Evolution API v2 pode enviar QRCODE_UPDATED ou qrcode.updated)
+    const event = (body.event || "").toLowerCase().replace(/_/g, ".");
+
     // QR Code gerado pela Evolution API — salva no banco
-    if (body.event === "qrcode.updated") {
+    if (event === "qrcode.updated") {
       const base64 = body.data?.qrcode?.base64 ?? body.data?.base64 ?? null;
       console.log("[webhook/whatsapp] qrcode.updated, base64 length:", base64?.length ?? 0);
       if (base64) {
@@ -31,7 +39,7 @@ export async function POST(req: Request) {
     }
 
     // Conexão atualizada
-    if (body.event === "connection.update") {
+    if (event === "connection.update") {
       const state = body.data?.state;
       console.log("[webhook/whatsapp] connection.update state:", state);
 
