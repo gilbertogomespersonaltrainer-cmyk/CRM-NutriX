@@ -35,8 +35,14 @@ export async function POST() {
 
     // 4) Cria instância nova e limpa (sem credenciais antigas)
     const instanceResult = await createInstance(tenantId);
-    console.log("[whatsapp/connect] create keys:", Object.keys(instanceResult || {}));
-    console.log("[whatsapp/connect] create qrcode:", JSON.stringify(instanceResult?.qrcode));
+    // Log completo para diagnóstico
+    console.log("[whatsapp/connect] create FULL response:", JSON.stringify(instanceResult).slice(0, 800));
+
+    // Se retornou erro, instância pode ainda existir
+    if (instanceResult?.status === 400 || instanceResult?.status === 409 || instanceResult?.error) {
+      console.error("[whatsapp/connect] create FAILED:", instanceResult?.error || instanceResult?.message);
+      return NextResponse.json({ error: "Falha ao criar instância: " + (instanceResult?.message || instanceResult?.error || "Erro desconhecido") }, { status: 500 });
+    }
 
     // 5) Verifica se o QR code veio na resposta do create
     const base64 =
@@ -53,7 +59,7 @@ export async function POST() {
       return NextResponse.json({ ok: true, qrReady: true });
     }
 
-    console.log("[whatsapp/connect] QR não veio no create. Aguardando webhook/polling.");
+    console.log("[whatsapp/connect] QR não veio no create. qrcode field:", JSON.stringify(instanceResult?.qrcode));
     return NextResponse.json({ ok: true, qrReady: false });
 
   } catch (err) {
