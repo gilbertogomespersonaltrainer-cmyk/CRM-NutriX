@@ -19,10 +19,9 @@ export function formatBrazilianPhone(phone: string): string {
   return `55${digits}`;
 }
 
-// Verifica se a instância existe
-export async function fetchInstance(tenantId: string) {
-  const name = instanceName(tenantId);
-  const res = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances?instanceName=${name}`, {
+// Busca todas as instâncias existentes
+export async function fetchAllInstances() {
+  const res = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances`, {
     method: "GET",
     headers: getHeaders(),
   });

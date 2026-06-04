@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { createInstance, deleteInstance, logoutInstance } from "@/lib/whatsapp";
+import { createInstance, deleteInstance, logoutInstance, fetchAllInstances, instanceName } from "@/lib/whatsapp";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,48 +10,71 @@ function sleep(ms: number) {
 export async function POST() {
   try {
     const tenantId = await getTenantId();
+    const targetName = instanceName(tenantId);
 
-    // 1) Logout para limpar TODAS as credenciais salvas (força novo QR code)
+    // 1) Busca TODAS as instâncias na Evolution API e deleta as relacionadas a este tenant
     try {
-      const logoutResult = await logoutInstance(tenantId);
-      console.log("[whatsapp/connect] logout:", JSON.stringify(logoutResult).slice(0, 200));
-    } catch { /* instância não existe ainda */ }
+      const allInstances = await fetchAllInstances();
+      console.log("[whatsapp/connect] total instâncias encontradas:", Array.isArray(allInstances) ? allInstances.length : "N/A");
 
-    await sleep(1000);
+      if (Array.isArray(allInstances)) {
+        for (const inst of allInstances) {
+          const name = inst?.instance?.instanceName ?? inst?.instanceName ?? "";
+          if (name === targetName || name.startsWith(`tenant_${tenantId}`)) {
+            console.log("[whatsapp/connect] deletando instância:", name);
+            try {
+              await fetch(`${process.env.EVOLUTION_API_URL}/instance/logout/${name}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json", apikey: process.env.EVOLUTION_API_KEY || "" },
+              });
+              await sleep(500);
+              await fetch(`${process.env.EVOLUTION_API_URL}/instance/delete/${name}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json", apikey: process.env.EVOLUTION_API_KEY || "" },
+              });
+            } catch { /* ignora */ }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[whatsapp/connect] erro ao listar instâncias:", e);
+    }
 
-    // 2) Delete para remover a instância completamente
+    // 2) Fallback: tenta deletar pelo nome padrão
     try {
-      const deleteResult = await deleteInstance(tenantId);
-      console.log("[whatsapp/connect] delete:", JSON.stringify(deleteResult).slice(0, 200));
+      await logoutInstance(tenantId);
+    } catch { /* ignora */ }
+    try {
+      await deleteInstance(tenantId);
     } catch { /* ignora */ }
 
-    await sleep(2000);
+    // 3) Espera a limpeza ser concluída
+    await sleep(3000);
 
-    // 3) Limpa banco e marca como conectando
+    // 4) Limpa banco
     await prisma.tenant.update({
       where: { id: tenantId },
       data: { whatsappStatus: "CONNECTING", whatsappQRCode: null },
     });
 
-    // 4) Cria instância nova e limpa (sem credenciais antigas)
+    // 5) Cria instância nova e limpa
     const instanceResult = await createInstance(tenantId);
-    // Log completo para diagnóstico
-    console.log("[whatsapp/connect] create FULL response:", JSON.stringify(instanceResult).slice(0, 800));
+    console.log("[whatsapp/connect] create FULL response:", JSON.stringify(instanceResult).slice(0, 1000));
 
-    // Se retornou erro, instância pode ainda existir
-    if (instanceResult?.status === 400 || instanceResult?.status === 409 || instanceResult?.error) {
-      console.error("[whatsapp/connect] create FAILED:", instanceResult?.error || instanceResult?.message);
-      return NextResponse.json({ error: "Falha ao criar instância: " + (instanceResult?.message || instanceResult?.error || "Erro desconhecido") }, { status: 500 });
+    // Detecta erro no create
+    if (instanceResult?.status >= 400 || instanceResult?.error || instanceResult?.message?.includes("already")) {
+      console.error("[whatsapp/connect] create FAILED:", JSON.stringify(instanceResult));
+      return NextResponse.json({ error: "Falha ao criar instância: " + (instanceResult?.message || instanceResult?.error) }, { status: 500 });
     }
 
-    // 5) Verifica se o QR code veio na resposta do create
+    // 6) Verifica se QR code veio na resposta
     const base64 =
       instanceResult?.qrcode?.base64 ??
       instanceResult?.base64 ??
       null;
 
     if (base64 && base64.length > 100) {
-      console.log("[whatsapp/connect] QR code na resposta do create! length:", base64.length);
+      console.log("[whatsapp/connect] QR code na resposta! length:", base64.length);
       await prisma.tenant.update({
         where: { id: tenantId },
         data: { whatsappQRCode: base64, whatsappStatus: "CONNECTING" },
@@ -59,7 +82,7 @@ export async function POST() {
       return NextResponse.json({ ok: true, qrReady: true });
     }
 
-    console.log("[whatsapp/connect] QR não veio no create. qrcode field:", JSON.stringify(instanceResult?.qrcode));
+    console.log("[whatsapp/connect] QR não veio no create. qrcode:", JSON.stringify(instanceResult?.qrcode));
     return NextResponse.json({ ok: true, qrReady: false });
 
   } catch (err) {
