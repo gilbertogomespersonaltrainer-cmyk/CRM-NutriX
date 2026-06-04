@@ -9,7 +9,8 @@ export async function POST(req: Request) {
 
     // Evolution API v2 pode usar 'instance' ou 'instanceName'
     const instanceName = body.instance || body.instanceName || "";
-    const tenantId = instanceName.replace("tenant_", "");
+    // Suporta prefixos "nx_" (novo) e "tenant_" (legado)
+    const tenantId = instanceName.replace(/^nx_/, "").replace(/^tenant_/, "");
 
     if (!tenantId) {
       return NextResponse.json({ error: "Invalid instance" }, { status: 400 });

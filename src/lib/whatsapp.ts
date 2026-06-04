@@ -8,9 +8,9 @@ function getHeaders() {
   };
 }
 
-// Nome fixo da instância por tenant
+// Nome da instância — prefixo "nx_" garante início limpo sem credenciais antigas
 export function instanceName(tenantId: string) {
-  return `tenant_${tenantId}`;
+  return `nx_${tenantId}`;
 }
 
 export function formatBrazilianPhone(phone: string): string {
