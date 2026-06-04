@@ -186,7 +186,7 @@ export default function ConfiguracoesPage() {
       }
       setWhatsappStatus("CONNECTING");
 
-      // Se o QR code já veio na resposta do connect, busca imediatamente
+      // Se o QR code já está pronto (veio do server-side polling), busca imediatamente
       if (data.qrReady) {
         const qrRes = await fetch("/api/whatsapp/qrcode");
         const qrData = await qrRes.json();
@@ -197,10 +197,10 @@ export default function ConfiguracoesPage() {
         }
       }
 
-      toast({ title: "Aguardando QR Code...", description: "O código aparecerá em alguns segundos." });
-      // Polling por até 60s — tenta webhook (banco) e fallback direto na Evolution API
-      for (let i = 0; i < 30; i++) {
-        await new Promise(r => setTimeout(r, 2000));
+      // qrReady: false — servidor não conseguiu ainda, continua tentando via webhook
+      toast({ title: "Aguardando QR Code...", description: "Pode levar alguns segundos..." });
+      for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 3000));
         const qrRes = await fetch("/api/whatsapp/qrcode");
         const qrData = await qrRes.json();
         if (qrData.base64) {
@@ -211,7 +211,7 @@ export default function ConfiguracoesPage() {
       }
       toast({
         title: "QR Code não chegou",
-        description: "Tente reconectar. Se o problema persistir, verifique os logs no Vercel.",
+        description: "Tente clicar em Conectar novamente.",
         variant: "error",
       });
     } catch {

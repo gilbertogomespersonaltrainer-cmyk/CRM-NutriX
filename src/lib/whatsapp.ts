@@ -50,25 +50,6 @@ export async function getQRCode(tenantId: string) {
   return res.json();
 }
 
-export async function setWebhook(tenantId: string) {
-  const name = instanceName(tenantId);
-  const webhookUrl = `${process.env.NEXTAUTH_URL}/api/webhooks/whatsapp`;
-  console.log("[whatsapp] setWebhook url:", webhookUrl);
-  const res = await fetch(`${EVOLUTION_API_URL}/webhook/set/${name}`, {
-    method: "PUT",
-    headers: getHeaders(),
-    body: JSON.stringify({
-      webhook: {
-        enabled: true,
-        url: webhookUrl,
-        webhookByEvents: false,
-        webhookBase64: true,
-        events: ["QRCODE_UPDATED", "CONNECTION_UPDATE"],
-      },
-    }),
-  });
-  return res.json();
-}
 
 export async function getStatus(tenantId: string) {
   const name = instanceName(tenantId);
