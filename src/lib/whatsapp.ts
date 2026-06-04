@@ -8,7 +8,8 @@ function getHeaders() {
   };
 }
 
-function instanceName(tenantId: string) {
+// Nome fixo da instância por tenant
+export function instanceName(tenantId: string) {
   return `tenant_${tenantId}`;
 }
 
@@ -18,10 +19,21 @@ export function formatBrazilianPhone(phone: string): string {
   return `55${digits}`;
 }
 
+// Verifica se a instância existe
+export async function fetchInstance(tenantId: string) {
+  const name = instanceName(tenantId);
+  const res = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances?instanceName=${name}`, {
+    method: "GET",
+    headers: getHeaders(),
+  });
+  return res.json();
+}
+
+// Cria instância nova
 export async function createInstance(tenantId: string) {
   const name = instanceName(tenantId);
   const webhookUrl = `${process.env.NEXTAUTH_URL}/api/webhooks/whatsapp`;
-  console.log("[whatsapp] createInstance webhookUrl:", webhookUrl);
+  console.log("[whatsapp] createInstance name:", name, "webhook:", webhookUrl);
   const res = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
     method: "POST",
     headers: getHeaders(),
@@ -41,6 +53,17 @@ export async function createInstance(tenantId: string) {
   return res.json();
 }
 
+// Faz logout (limpa sessão/credenciais salvas, força novo QR)
+export async function logoutInstance(tenantId: string) {
+  const name = instanceName(tenantId);
+  const res = await fetch(`${EVOLUTION_API_URL}/instance/logout/${name}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  return res.json();
+}
+
+// Busca QR code diretamente da Evolution API
 export async function getQRCode(tenantId: string) {
   const name = instanceName(tenantId);
   const res = await fetch(`${EVOLUTION_API_URL}/instance/connect/${name}`, {
@@ -49,7 +72,6 @@ export async function getQRCode(tenantId: string) {
   });
   return res.json();
 }
-
 
 export async function getStatus(tenantId: string) {
   const name = instanceName(tenantId);
@@ -83,7 +105,6 @@ export async function sendTextMessage(
 
 export async function deleteInstance(tenantId: string) {
   const name = instanceName(tenantId);
-  // Evolution API v2 usa logout + delete em sequência
   try {
     await fetch(`${EVOLUTION_API_URL}/instance/logout/${name}`, {
       method: "DELETE",
