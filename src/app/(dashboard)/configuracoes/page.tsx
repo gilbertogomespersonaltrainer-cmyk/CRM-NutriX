@@ -185,6 +185,18 @@ export default function ConfiguracoesPage() {
         return;
       }
       setWhatsappStatus("CONNECTING");
+
+      // Se o QR code já veio na resposta do connect, busca imediatamente
+      if (data.qrReady) {
+        const qrRes = await fetch("/api/whatsapp/qrcode");
+        const qrData = await qrRes.json();
+        if (qrData.base64) {
+          setQrCode(qrData.base64);
+          setConnecting(false);
+          return;
+        }
+      }
+
       toast({ title: "Aguardando QR Code...", description: "O código aparecerá em alguns segundos." });
       // Polling por até 60s — tenta webhook (banco) e fallback direto na Evolution API
       for (let i = 0; i < 30; i++) {
