@@ -172,6 +172,7 @@ export default function ConfiguracoesPage() {
 
   async function connectWhatsApp() {
     setConnecting(true);
+    setQrCode(null);
     try {
       const res = await fetch("/api/whatsapp/connect", { method: "POST" });
       const data = await res.json();
@@ -183,17 +184,25 @@ export default function ConfiguracoesPage() {
         });
         return;
       }
-      const base64 = data.base64 ?? data.qrcode?.base64;
-      if (base64) {
-        setQrCode(base64);
-        setWhatsappStatus("CONNECTING");
-      } else {
-        toast({
-          title: "QR Code não gerado",
-          description: "A API retornou uma resposta inesperada. Tente novamente.",
-          variant: "error",
-        });
+      // Evolution API v2 entrega QR code via webhook — fazemos polling no banco
+      setWhatsappStatus("CONNECTING");
+      toast({ title: "Aguardando QR Code...", description: "O código aparecerá em alguns segundos." });
+      // Polling por até 30s esperando o QR code chegar via webhook
+      for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const qrRes = await fetch("/api/whatsapp/qrcode");
+        const qrData = await qrRes.json();
+        if (qrData.base64) {
+          setQrCode(qrData.base64);
+          setConnecting(false);
+          return;
+        }
       }
+      toast({
+        title: "QR Code não chegou",
+        description: "Verifique se o webhook da Evolution API está configurado corretamente.",
+        variant: "error",
+      });
     } catch {
       toast({
         title: "Erro de conexão",

@@ -137,6 +137,7 @@ model Tenant {
   whatsappStatus        WhatsAppStatus @default(DISCONNECTED)
   whatsappPhone         String?
   whatsappConnectedAt   DateTime?
+  whatsappQRCode        String?
   inactiveDaysThreshold Int            @default(30)
   defaultDuration       Int            @default(50)
   workingHours          Json?
