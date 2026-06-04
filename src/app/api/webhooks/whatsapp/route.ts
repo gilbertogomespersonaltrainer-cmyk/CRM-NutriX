@@ -4,9 +4,11 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log("[webhook/whatsapp] event:", body.event, "instance:", body.instance);
+    // Log completo do payload para diagnóstico
+    console.log("[webhook/whatsapp] PAYLOAD:", JSON.stringify(body).slice(0, 600));
 
-    const instanceName = body.instance || "";
+    // Evolution API v2 pode usar 'instance' ou 'instanceName'
+    const instanceName = body.instance || body.instanceName || "";
     const tenantId = instanceName.replace("tenant_", "");
 
     if (!tenantId) {
@@ -18,8 +20,14 @@ export async function POST(req: Request) {
 
     // QR Code gerado pela Evolution API — salva no banco
     if (event === "qrcode.updated") {
-      const base64 = body.data?.qrcode?.base64 ?? body.data?.base64 ?? null;
-      console.log("[webhook/whatsapp] qrcode.updated, base64 length:", base64?.length ?? 0);
+      // Tenta todos os campos possíveis onde o base64 pode estar
+      const base64 =
+        body.data?.qrcode?.base64 ??
+        body.data?.base64 ??
+        body.qrcode?.base64 ??
+        body.base64 ??
+        null;
+      console.log("[webhook/whatsapp] qrcode.updated, tenantId:", tenantId, "base64 length:", base64?.length ?? 0);
       if (base64) {
         await prisma.tenant.update({
           where: { id: tenantId },
