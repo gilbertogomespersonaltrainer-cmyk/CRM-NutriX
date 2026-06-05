@@ -138,6 +138,8 @@ model Tenant {
   whatsappPhone         String?
   whatsappConnectedAt   DateTime?
   whatsappQRCode        String?
+  zapiInstanceId        String?
+  zapiClientToken       String?
   inactiveDaysThreshold Int            @default(30)
   defaultDuration       Int            @default(50)
   workingHours          Json?

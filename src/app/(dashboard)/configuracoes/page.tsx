@@ -36,6 +36,8 @@ type TenantSettings = {
   defaultDuration: number;
   whatsappStatus: string;
   appointmentTypes: string[];
+  zapiInstanceId: string | null;
+  zapiClientToken: string | null;
 };
 
 type ServiceType = {
@@ -85,6 +87,9 @@ export default function ConfiguracoesPage() {
   const [whatsappStatus, setWhatsappStatus] = useState("DISCONNECTED");
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [zapiInstanceId, setZapiInstanceId] = useState("");
+  const [zapiClientToken, setZapiClientToken] = useState("");
+  const [savingZapi, setSavingZapi] = useState(false);
 
   // New service type
   const [newService, setNewService] = useState({ name: "", defaultPrice: "" });
@@ -130,6 +135,8 @@ export default function ConfiguracoesPage() {
     setSettings(sData);
     setWhatsappStatus(sData.whatsappStatus);
     setAppointmentTypes(sData.appointmentTypes || []);
+    if (sData.zapiInstanceId) setZapiInstanceId(sData.zapiInstanceId);
+    if (sData.zapiClientToken) setZapiClientToken(sData.zapiClientToken);
     setServiceTypes(await stRes.json());
     setTemplates(await tRes.json());
     setLoading(false);
@@ -230,6 +237,28 @@ export default function ConfiguracoesPage() {
     setWhatsappStatus("DISCONNECTED");
     setQrCode(null);
     toast({ title: "WhatsApp desconectado", variant: "success" });
+  }
+
+  async function saveZapiCredentials() {
+    if (!zapiInstanceId.trim() || !zapiClientToken.trim()) {
+      toast({ title: "Preencha o Instance ID e o Client Token", variant: "error" });
+      return;
+    }
+    setSavingZapi(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ zapiInstanceId: zapiInstanceId.trim(), zapiClientToken: zapiClientToken.trim() }),
+      });
+      if (res.ok) {
+        toast({ title: "Credenciais Zapi salvas!", description: "Agora clique em Conectar WhatsApp.", variant: "success" });
+      } else {
+        toast({ title: "Erro ao salvar credenciais", variant: "error" });
+      }
+    } finally {
+      setSavingZapi(false);
+    }
   }
 
   async function addServiceType(e: React.FormEvent) {
@@ -746,26 +775,54 @@ export default function ConfiguracoesPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="text-center py-8 space-y-4">
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#ef4444]/15 to-[#dc2626]/5 border border-[#ef4444]/20 shadow-[0_0_30px_rgba(239,68,68,0.08)] flex items-center justify-center">
-                    <WifiOff className="h-7 w-7 text-[#f87171]" strokeWidth={1.6} />
-                  </div>
-                  <div>
-                    <p className="text-lg font-medium text-white">
-                      WhatsApp Desconectado
+                <div className="space-y-6 py-4">
+                  {/* Configuração Zapi */}
+                  <div className="space-y-3 p-4 rounded-xl border border-[#222] bg-[#0d0d0d]">
+                    <p className="text-sm font-medium text-white flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4 text-[#22c55e]" />
+                      Configuração Zapi.io
                     </p>
-                    <p className="text-sm text-[#666] mt-1">
-                      Conecte seu WhatsApp para enviar mensagens automáticas
+                    <p className="text-xs text-[#666]">
+                      Crie sua conta em <span className="text-[#22c55e]">zapi.io</span>, crie uma instância e cole as credenciais abaixo.
                     </p>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-[#888]">Instance ID</Label>
+                      <Input
+                        placeholder="Ex: 3D969C81CCB88B2F7BAFA3B4"
+                        value={zapiInstanceId}
+                        onChange={e => setZapiInstanceId(e.target.value)}
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-[#888]">Client Token</Label>
+                      <Input
+                        placeholder="Ex: F4C4C4C4-4C4C-4C4C-4C4C-4C4C4C4C4C4C"
+                        value={zapiClientToken}
+                        onChange={e => setZapiClientToken(e.target.value)}
+                        className="font-mono text-sm"
+                        type="password"
+                      />
+                    </div>
+                    <Button onClick={saveZapiCredentials} disabled={savingZapi} variant="secondary" className="w-full">
+                      {savingZapi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Salvar Credenciais
+                    </Button>
                   </div>
-                  <Button onClick={connectWhatsApp} disabled={connecting}>
-                    {connecting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <MessageCircle className="h-4 w-4" />
-                    )}
-                    Conectar WhatsApp
-                  </Button>
+
+                  {/* Botão conectar (só aparece se credenciais salvas) */}
+                  {zapiInstanceId && zapiClientToken && (
+                    <div className="text-center space-y-3">
+                      <Button onClick={connectWhatsApp} disabled={connecting} className="w-full">
+                        {connecting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <QrCode className="h-4 w-4" />
+                        )}
+                        {connecting ? "Gerando QR Code..." : "Conectar WhatsApp"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

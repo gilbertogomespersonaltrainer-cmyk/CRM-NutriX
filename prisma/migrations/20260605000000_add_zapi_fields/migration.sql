@@ -1,0 +1,2 @@
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "zapiInstanceId" TEXT;
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "zapiClientToken" TEXT;

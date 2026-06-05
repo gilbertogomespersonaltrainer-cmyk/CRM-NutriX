@@ -20,11 +20,28 @@ export async function GET() {
         workingHours: true,
         whatsappStatus: true,
         appointmentTypes: true,
+        zapiInstanceId: true,
+        zapiClientToken: true,
       },
     });
     return NextResponse.json(tenant);
   } catch {
     return NextResponse.json({ error: "Erro ao buscar configurações" }, { status: 500 });
+  }
+}
+
+// PATCH — salva credenciais Zapi
+export async function PATCH(req: Request) {
+  try {
+    const tenantId = await getTenantId();
+    const body = await req.json();
+    const data: Record<string, unknown> = {};
+    if (body.zapiInstanceId !== undefined) data.zapiInstanceId = body.zapiInstanceId;
+    if (body.zapiClientToken !== undefined) data.zapiClientToken = body.zapiClientToken;
+    await prisma.tenant.update({ where: { id: tenantId }, data });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Erro ao salvar credenciais Zapi" }, { status: 500 });
   }
 }
 
