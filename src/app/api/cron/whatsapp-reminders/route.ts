@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { zapiSendText } from "@/lib/zapi";
+import { wahaSendText } from "@/lib/waha";
 import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
 
 function authorizeCron(req: Request): boolean {
@@ -16,13 +16,7 @@ async function sendTemplateMessage(
   messageType: string
 ) {
   try {
-    // Busca credenciais Zapi do tenant
-    const tenantData = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { zapiInstanceId: true, zapiClientToken: true },
-    });
-    if (!tenantData?.zapiInstanceId || !tenantData?.zapiClientToken) throw new Error("Zapi não configurado");
-    await zapiSendText(tenantData.zapiInstanceId, tenantData.zapiClientToken, phone, message);
+    await wahaSendText(tenantId, phone, message);
     await prisma.whatsAppLog.create({
       data: {
         tenantId,

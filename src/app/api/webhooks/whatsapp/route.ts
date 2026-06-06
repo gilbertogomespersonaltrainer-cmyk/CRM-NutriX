@@ -1,64 +1,51 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { wahaSessionName } from "@/lib/waha";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log("[webhook/zapi] payload:", JSON.stringify(body).slice(0, 400));
+    console.log("[webhook/waha] payload:", JSON.stringify(body).slice(0, 400));
 
-    // Zapi envia instanceId no body
-    const instanceId: string = body.instanceId ?? body.instance ?? "";
-    if (!instanceId) return NextResponse.json({ received: true });
+    const sessionName: string = body.session ?? "";
+    if (!sessionName) return NextResponse.json({ received: true });
 
-    // Encontra o tenant pelo zapiInstanceId
-    const tenant = await prisma.tenant.findFirst({
-      where: { zapiInstanceId: instanceId },
-      select: { id: true },
-    });
+    const tenants = await prisma.tenant.findMany({ select: { id: true } });
+    const tenant = tenants.find(t => wahaSessionName(t.id) === sessionName);
 
     if (!tenant) {
-      console.warn("[webhook/zapi] tenant não encontrado para instanceId:", instanceId);
+      console.warn("[webhook/waha] tenant não encontrado para session:", sessionName);
       return NextResponse.json({ received: true });
     }
 
-    const type: string = (body.type ?? body.event ?? "").toLowerCase();
-    console.log("[webhook/zapi] type:", type, "tenantId:", tenant.id);
+    const event: string = (body.event ?? "").toLowerCase();
+    const status: string = body.payload?.status ?? "";
+    console.log("[webhook/waha] event:", event, "status:", status, "tenantId:", tenant.id);
 
-    // Conectado
-    if (type === "connected" || type === "connection.update.open") {
+    if (event === "session.status" && status === "WORKING") {
       await prisma.tenant.update({
         where: { id: tenant.id },
-        data: {
-          whatsappStatus: "CONNECTED",
-          whatsappPhone: body.phone ?? body.phoneNumber ?? null,
-          whatsappConnectedAt: new Date(),
-          whatsappQRCode: null,
-        },
+        data: { whatsappStatus: "CONNECTED", whatsappConnectedAt: new Date(), whatsappQRCode: null },
       });
     }
 
-    // Desconectado
-    if (type === "disconnected" || type === "connection.update.close") {
+    if (event === "session.status" && (status === "STOPPED" || status === "FAILED")) {
       await prisma.tenant.update({
         where: { id: tenant.id },
         data: { whatsappStatus: "DISCONNECTED", whatsappQRCode: null },
       });
     }
 
-    // QR Code chegou via webhook
-    if (type === "qrcode" || type === "qrcode.updated") {
-      const base64 = body.qrcode ?? body.value ?? body.base64 ?? null;
-      if (base64 && base64.length > 100) {
-        await prisma.tenant.update({
-          where: { id: tenant.id },
-          data: { whatsappQRCode: base64, whatsappStatus: "CONNECTING" },
-        });
-      }
+    if (event === "session.status" && status === "SCAN_QR_CODE") {
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: { whatsappStatus: "CONNECTING", whatsappQRCode: null },
+      });
     }
 
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("[webhook/zapi] erro:", err);
+    console.error("[webhook/waha] erro:", err);
     return NextResponse.json({ error: "Webhook error" }, { status: 500 });
   }
 }

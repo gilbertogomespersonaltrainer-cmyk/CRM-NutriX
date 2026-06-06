@@ -1,0 +1,68 @@
+const WAHA_URL = (process.env.WAHA_URL || "").replace(/\/$/, "");
+const WAHA_API_KEY = process.env.WAHA_API_KEY || "";
+
+function wahaHeaders() {
+  return { "Content-Type": "application/json", "X-Api-Key": WAHA_API_KEY };
+}
+
+export function wahaSessionName(tenantId: string) {
+  return `nx_${tenantId.replace(/-/g, "").slice(0, 20)}`;
+}
+
+export async function wahaStartSession(tenantId: string) {
+  const name = wahaSessionName(tenantId);
+  // Tenta criar; se já existir (409), ignora
+  await fetch(`${WAHA_URL}/api/sessions`, {
+    method: "POST",
+    headers: wahaHeaders(),
+    body: JSON.stringify({ name, start: true }),
+  });
+  // Garante que está rodando
+  await fetch(`${WAHA_URL}/api/sessions/${name}/start`, {
+    method: "POST",
+    headers: wahaHeaders(),
+  });
+}
+
+export async function wahaGetQRCode(tenantId: string): Promise<string | null> {
+  const name = wahaSessionName(tenantId);
+  const res = await fetch(`${WAHA_URL}/api/${name}/auth/qr`, {
+    headers: wahaHeaders(),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  console.log("[waha] qr response:", JSON.stringify(data).slice(0, 200));
+  // WAHA retorna { value: "data:image/png;base64,..." }
+  return data?.value ?? null;
+}
+
+export async function wahaGetStatus(tenantId: string): Promise<string> {
+  const name = wahaSessionName(tenantId);
+  const res = await fetch(`${WAHA_URL}/api/sessions/${name}`, {
+    headers: wahaHeaders(),
+  });
+  if (!res.ok) return "STOPPED";
+  const data = await res.json();
+  // status: STOPPED | STARTING | SCAN_QR_CODE | WORKING | FAILED
+  return data?.status ?? "STOPPED";
+}
+
+export async function wahaStopSession(tenantId: string) {
+  const name = wahaSessionName(tenantId);
+  await fetch(`${WAHA_URL}/api/sessions/${name}/stop`, {
+    method: "POST",
+    headers: wahaHeaders(),
+  });
+}
+
+export async function wahaSendText(tenantId: string, phone: string, message: string) {
+  const name = wahaSessionName(tenantId);
+  const digits = phone.replace(/\D/g, "");
+  const chatId = `${digits.startsWith("55") ? digits : `55${digits}`}@c.us`;
+  const res = await fetch(`${WAHA_URL}/api/sendText`, {
+    method: "POST",
+    headers: wahaHeaders(),
+    body: JSON.stringify({ session: name, chatId, text: message }),
+  });
+  return res.json();
+}

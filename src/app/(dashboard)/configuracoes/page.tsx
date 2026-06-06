@@ -19,7 +19,6 @@ import {
   Wifi,
   WifiOff,
   CheckCircle,
-  MessageCircle,
   Smartphone,
   Pencil,
   X,
@@ -87,8 +86,6 @@ export default function ConfiguracoesPage() {
   const [whatsappStatus, setWhatsappStatus] = useState("DISCONNECTED");
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
-  const [zapiInstanceId, setZapiInstanceId] = useState("");
-  const [zapiClientToken, setZapiClientToken] = useState("");
   const [savingZapi, setSavingZapi] = useState(false);
 
   // New service type
@@ -135,8 +132,6 @@ export default function ConfiguracoesPage() {
     setSettings(sData);
     setWhatsappStatus(sData.whatsappStatus);
     setAppointmentTypes(sData.appointmentTypes || []);
-    if (sData.zapiInstanceId) setZapiInstanceId(sData.zapiInstanceId);
-    if (sData.zapiClientToken) setZapiClientToken(sData.zapiClientToken);
     setServiceTypes(await stRes.json());
     setTemplates(await tRes.json());
     setLoading(false);
@@ -776,53 +771,24 @@ export default function ConfiguracoesPage() {
                 </div>
               ) : (
                 <div className="space-y-6 py-4">
-                  {/* Configuração Zapi */}
-                  <div className="space-y-3 p-4 rounded-xl border border-[#222] bg-[#0d0d0d]">
-                    <p className="text-sm font-medium text-white flex items-center gap-2">
-                      <MessageCircle className="h-4 w-4 text-[#22c55e]" />
-                      Configuração Zapi.io
-                    </p>
-                    <p className="text-xs text-[#666]">
-                      Crie sua conta em <span className="text-[#22c55e]">zapi.io</span>, crie uma instância e cole as credenciais abaixo.
-                    </p>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-[#888]">Instance ID</Label>
-                      <Input
-                        placeholder="Ex: 3D969C81CCB88B2F7BAFA3B4"
-                        value={zapiInstanceId}
-                        onChange={e => setZapiInstanceId(e.target.value)}
-                        className="font-mono text-sm"
-                      />
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#22c55e]/10 to-[#16a34a]/5 border border-[#22c55e]/20 flex items-center justify-center">
+                      <Smartphone className="h-7 w-7 text-[#22c55e]/60" strokeWidth={1.6} />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-[#888]">Client Token</Label>
-                      <Input
-                        placeholder="Ex: F4C4C4C4-4C4C-4C4C-4C4C-4C4C4C4C4C4C"
-                        value={zapiClientToken}
-                        onChange={e => setZapiClientToken(e.target.value)}
-                        className="font-mono text-sm"
-                        type="password"
-                      />
+                    <div>
+                      <p className="text-sm text-[#888]">
+                        Clique em <strong className="text-white">Conectar WhatsApp</strong> e escaneie o QR Code com seu celular.
+                      </p>
                     </div>
-                    <Button onClick={saveZapiCredentials} disabled={savingZapi} variant="secondary" className="w-full">
-                      {savingZapi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      Salvar Credenciais
+                    <Button onClick={connectWhatsApp} disabled={connecting} className="w-full">
+                      {connecting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <QrCode className="h-4 w-4" />
+                      )}
+                      {connecting ? "Gerando QR Code..." : "Conectar WhatsApp"}
                     </Button>
                   </div>
-
-                  {/* Botão conectar (só aparece se credenciais salvas) */}
-                  {zapiInstanceId && zapiClientToken && (
-                    <div className="text-center space-y-3">
-                      <Button onClick={connectWhatsApp} disabled={connecting} className="w-full">
-                        {connecting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <QrCode className="h-4 w-4" />
-                        )}
-                        {connecting ? "Gerando QR Code..." : "Conectar WhatsApp"}
-                      </Button>
-                    </div>
-                  )}
                 </div>
               )}
             </CardContent>
