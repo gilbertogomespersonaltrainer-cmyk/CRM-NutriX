@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaStartSession, wahaGetQRCode } from "@/lib/waha";
+import { wahaStartSession } from "@/lib/waha";
 
 export async function POST() {
   try {
@@ -13,29 +13,10 @@ export async function POST() {
       data: { whatsappStatus: "CONNECTING", whatsappQRCode: null },
     });
 
-    // Inicia sessão WAHA para este tenant
+    // Inicia sessão WAHA (delete + recreate em background)
     await wahaStartSession(tenantId);
 
-    // Aguarda WAHA recriar a sessão e gerar o QR (delete+create leva ~1s extra)
-    await new Promise(r => setTimeout(r, 3000));
-
-    // Tenta buscar QR (até 2 tentativas com 1.5s de intervalo — total <8s no Vercel)
-    let base64: string | null = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      base64 = await wahaGetQRCode(tenantId);
-      console.log(`[whatsapp/connect] tentativa ${attempt + 1} QR length:`, base64?.length ?? 0);
-      if (base64) break;
-      await new Promise(r => setTimeout(r, 1500));
-    }
-
-    if (base64) {
-      await prisma.tenant.update({
-        where: { id: tenantId },
-        data: { whatsappQRCode: base64 },
-      });
-      return NextResponse.json({ ok: true, qrReady: true });
-    }
-
+    // Retorna imediatamente — o frontend vai buscar o QR via polling
     return NextResponse.json({ ok: true, qrReady: false });
   } catch (err) {
     console.error("[whatsapp/connect] erro:", err);
