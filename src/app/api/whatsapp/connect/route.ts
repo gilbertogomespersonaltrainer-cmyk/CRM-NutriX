@@ -16,12 +16,17 @@ export async function POST() {
     // Inicia sessão WAHA para este tenant
     await wahaStartSession(tenantId);
 
-    // Aguarda 2s para o WAHA gerar o QR
-    await new Promise(r => setTimeout(r, 2000));
+    // Aguarda WAHA recriar a sessão e gerar o QR (delete+create leva ~1s extra)
+    await new Promise(r => setTimeout(r, 3000));
 
-    // Tenta buscar QR
-    const base64 = await wahaGetQRCode(tenantId);
-    console.log("[whatsapp/connect] WAHA QR length:", base64?.length ?? 0);
+    // Tenta buscar QR (até 2 tentativas com 1.5s de intervalo — total <8s no Vercel)
+    let base64: string | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      base64 = await wahaGetQRCode(tenantId);
+      console.log(`[whatsapp/connect] tentativa ${attempt + 1} QR length:`, base64?.length ?? 0);
+      if (base64) break;
+      await new Promise(r => setTimeout(r, 1500));
+    }
 
     if (base64) {
       await prisma.tenant.update({

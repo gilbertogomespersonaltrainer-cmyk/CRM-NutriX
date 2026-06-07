@@ -11,17 +11,29 @@ export function wahaSessionName(tenantId: string) {
 
 export async function wahaStartSession(tenantId: string) {
   const name = wahaSessionName(tenantId);
-  // Tenta criar; se já existir (409), ignora
-  await fetch(`${WAHA_URL}/api/sessions`, {
+
+  // Deleta sessão anterior (se existir) para garantir QR novo
+  await fetch(`${WAHA_URL}/api/sessions/${name}`, {
+    method: "DELETE",
+    headers: wahaHeaders(),
+  });
+
+  await new Promise(r => setTimeout(r, 800));
+
+  // Cria sessão nova com start: true
+  const createRes = await fetch(`${WAHA_URL}/api/sessions`, {
     method: "POST",
     headers: wahaHeaders(),
     body: JSON.stringify({ name, start: true }),
   });
-  // Garante que está rodando
-  await fetch(`${WAHA_URL}/api/sessions/${name}/start`, {
-    method: "POST",
-    headers: wahaHeaders(),
-  });
+
+  // Se a criação falhou (sessão ainda existe), força o start
+  if (!createRes.ok) {
+    await fetch(`${WAHA_URL}/api/sessions/${name}/start`, {
+      method: "POST",
+      headers: wahaHeaders(),
+    });
+  }
 }
 
 export async function wahaGetQRCode(tenantId: string): Promise<string | null> {
