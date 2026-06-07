@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { Search, MoreVertical, Gift, Clock } from "lucide-react";
+import { Search, MoreVertical, Gift, Clock, UserPlus } from "lucide-react";
 
 type Tenant = {
   id: string;
@@ -60,6 +60,13 @@ export default function AssinantesPage() {
   const [trialDays, setTrialDays] = useState(7);
   const [showGift, setShowGift] = useState(false);
   const [showExtend, setShowExtend] = useState(false);
+
+  // Criar conta
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: "", email: "", phone: "", crn: "", clinicName: "", planId: "", trialDays: 14,
+  });
 
   const fetchTenants = useCallback(async () => {
     const params = new URLSearchParams();
@@ -107,6 +114,32 @@ export default function AssinantesPage() {
     }
   }
 
+  async function handleCreate() {
+    if (!createForm.name || !createForm.email || !createForm.phone || !createForm.crn) {
+      toast({ title: "Preencha todos os campos obrigatórios", variant: "error" });
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await fetch("/api/admin/tenants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(createForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: data.error || "Erro ao criar conta", variant: "error" });
+        return;
+      }
+      toast({ title: `Conta criada! E-mail enviado para ${data.email}`, variant: "success" });
+      setShowCreate(false);
+      setCreateForm({ name: "", email: "", phone: "", crn: "", clinicName: "", planId: "", trialDays: 14 });
+      fetchTenants();
+    } finally {
+      setCreating(false);
+    }
+  }
+
   const statusFilters = [
     { key: "", label: "Todos" },
     { key: "ACTIVE", label: "Ativos" },
@@ -117,11 +150,20 @@ export default function AssinantesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-outfit text-2xl font-bold text-white">Assinantes</h1>
-        <p className="text-sm text-[#666] mt-1">
-          Gerencie todos os nutricionistas cadastrados
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-outfit text-2xl font-bold text-white">Assinantes</h1>
+          <p className="text-sm text-[#666] mt-1">
+            Gerencie todos os nutricionistas cadastrados
+          </p>
+        </div>
+        <Button
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-2"
+        >
+          <UserPlus className="h-4 w-4" />
+          Criar Conta
+        </Button>
       </div>
 
       {/* Filters */}
@@ -243,6 +285,119 @@ export default function AssinantesPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Criar Conta Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Criar Conta</DialogTitle>
+            <DialogDescription>
+              Cria uma conta e envia os dados de acesso por e-mail automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs text-[#666] font-medium">Nome completo *</label>
+              <input
+                type="text"
+                value={createForm.name}
+                onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Dra. Ana Silva"
+                className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#22c55e]/50"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-[#666] font-medium">E-mail *</label>
+              <input
+                type="email"
+                value={createForm.email}
+                onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="nutricionista@email.com"
+                className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#22c55e]/50"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-[#666] font-medium">Telefone *</label>
+                <input
+                  type="text"
+                  value={createForm.phone}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="(11) 99999-9999"
+                  className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#22c55e]/50"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-[#666] font-medium">CRN *</label>
+                <input
+                  type="text"
+                  value={createForm.crn}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, crn: e.target.value }))}
+                  placeholder="CRN3-12345"
+                  className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#22c55e]/50"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-[#666] font-medium">Nome da clínica <span className="text-[#444]">(opcional)</span></label>
+              <input
+                type="text"
+                value={createForm.clinicName}
+                onChange={(e) => setCreateForm((f) => ({ ...f, clinicName: e.target.value }))}
+                placeholder="Clínica NutriVida"
+                className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#22c55e]/50"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-[#666] font-medium">Plano</label>
+                <select
+                  value={createForm.planId}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, planId: e.target.value }))}
+                  className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#22c55e]/50"
+                >
+                  <option value="">Padrão</option>
+                  {plans.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-[#666] font-medium">Dias de trial</label>
+                <div className="flex gap-1">
+                  {[7, 14, 30].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setCreateForm((f) => ({ ...f, trialDays: d }))}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        createForm.trialDays === d
+                          ? "border-[#22c55e]/40 bg-[#22c55e]/10 text-[#22c55e]"
+                          : "border-[#2a2a2a] text-[#666] hover:text-white bg-[#161616]"
+                      }`}
+                    >
+                      {d}d
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={handleCreate}
+                disabled={creating}
+                className="flex-1"
+              >
+                {creating ? "Criando..." : "Criar e enviar e-mail"}
+              </Button>
+              <Button variant="secondary" onClick={() => setShowCreate(false)} disabled={creating}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Actions Dialog */}
       <Dialog open={showActions} onOpenChange={setShowActions}>
