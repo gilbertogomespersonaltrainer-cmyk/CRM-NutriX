@@ -100,8 +100,11 @@ export default function InboxPage() {
   const [search, setSearch] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // controla se é o primeiro carregamento (mostra spinner) ou refresh silencioso
+  const initialConvsLoad = useRef(true);
+  const initialMsgsLoad = useRef<string | null>(null); // phone da conversa carregando pela 1ª vez
 
-  // Fetch conversations list
+  // Fetch conversations list — spinner só no primeiro load, depois atualiza silenciosamente
   const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch("/api/inbox");
@@ -110,7 +113,10 @@ export default function InboxPage() {
         setConversations(Array.isArray(data) ? data : []);
       }
     } catch { /* ignore */ } finally {
-      setLoadingConvs(false);
+      if (initialConvsLoad.current) {
+        setLoadingConvs(false);
+        initialConvsLoad.current = false;
+      }
     }
   }, []);
 
@@ -122,7 +128,10 @@ export default function InboxPage() {
 
   // Fetch messages for selected conversation
   const fetchMessages = useCallback(async (phone: string) => {
-    setLoadingMsgs(true);
+    // Mostra spinner apenas quando abre uma conversa pela primeira vez
+    if (initialMsgsLoad.current === phone) {
+      setLoadingMsgs(true);
+    }
     try {
       const res = await fetch(`/api/inbox/${encodeURIComponent(phone)}`);
       if (res.ok) {
@@ -137,9 +146,15 @@ export default function InboxPage() {
   // Poll messages when a conversation is open
   useEffect(() => {
     if (!selectedPhone) return;
+    // Marca como primeiro carregamento para mostrar spinner só na abertura
+    initialMsgsLoad.current = selectedPhone;
     fetchMessages(selectedPhone);
-    const interval = setInterval(() => fetchMessages(selectedPhone), 5000);
-    return () => clearInterval(interval);
+    // Após o primeiro fetch, marca como nulo para refreshes silenciosos
+    const silentInterval = setInterval(() => {
+      initialMsgsLoad.current = null;
+      fetchMessages(selectedPhone);
+    }, 5000);
+    return () => clearInterval(silentInterval);
   }, [selectedPhone, fetchMessages]);
 
   // Scroll to bottom when messages load
@@ -150,6 +165,7 @@ export default function InboxPage() {
   function selectConversation(phone: string) {
     setSelectedPhone(phone);
     setMessages([]);
+    setLoadingMsgs(false); // reseta antes do useEffect definir o spinner
     setReply("");
     // Mark as read locally
     setConversations(prev =>
