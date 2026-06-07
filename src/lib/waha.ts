@@ -107,10 +107,24 @@ export async function wahaStopSession(tenantId: string) {
   } catch { /* ignora */ }
 }
 
-export async function wahaSendText(tenantId: string, phone: string, message: string) {
+export async function wahaSendText(
+  tenantId: string,
+  phone: string,
+  message: string,
+  rawChatId?: string  // JID original do WAHA — usa quando disponível para garantir entrega correta
+) {
   const name = wahaSessionName(tenantId);
-  const digits = phone.replace(/\D/g, "");
-  const chatId = `${digits.startsWith("55") ? digits : `55${digits}`}@c.us`;
+
+  // Usa o chatId original se disponível (resolve problemas com LIDs e formatos não-padrão)
+  // Caso contrário, reconstrói a partir do phone
+  let chatId: string;
+  if (rawChatId) {
+    chatId = rawChatId;
+  } else {
+    const digits = phone.replace(/\D/g, "");
+    chatId = `${digits.startsWith("55") ? digits : `55${digits}`}@c.us`;
+  }
+
   const res = await wahaFetch(`${WAHA_URL}/api/sendText`, {
     method: "POST",
     headers: wahaHeaders(),

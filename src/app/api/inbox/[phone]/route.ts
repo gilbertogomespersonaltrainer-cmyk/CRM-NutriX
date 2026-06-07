@@ -37,14 +37,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ phone: 
       return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });
     }
 
-    // Envia via WAHA
-    await wahaSendText(tenantId, phone, body.trim());
+    // Busca o chatId original da conversa (JID do WAHA) para garantir entrega correta
+    // Especialmente importante para contas com LID (Linked ID) em vez de número padrão
+    const lastMsg = await prisma.inboxMessage.findFirst({
+      where: { tenantId, phone, fromMe: false, chatId: { not: null } },
+      orderBy: { timestamp: "desc" },
+      select: { chatId: true },
+    });
+
+    const chatId = lastMsg?.chatId ?? null;
+
+    // Envia via WAHA usando chatId original se disponível, senão usa phone
+    await wahaSendText(tenantId, phone, body.trim(), chatId ?? undefined);
 
     // Salva no inbox
     const msg = await prisma.inboxMessage.create({
       data: {
         tenantId,
         phone,
+        chatId: chatId ?? undefined,
         body: body.trim(),
         fromMe: true,
         timestamp: new Date(),

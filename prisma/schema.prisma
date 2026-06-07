@@ -363,6 +363,7 @@ model InboxMessage {
   id        String   @id @default(cuid())
   tenantId  String
   phone     String   // número normalizado (só dígitos com DDI)
+  chatId    String?  // JID original do WAHA ex: "5511999999999@c.us" — usado para enviar respostas
   name      String?  // nome do contato se disponível
   body      String
   fromMe    Boolean  @default(false)

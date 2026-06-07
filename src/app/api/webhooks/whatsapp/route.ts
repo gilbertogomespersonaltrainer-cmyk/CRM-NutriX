@@ -5,7 +5,8 @@ import { wahaSessionName } from "@/lib/waha";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log("[webhook/waha] payload:", JSON.stringify(body).slice(0, 400));
+    // Log completo do payload para debug — remover após diagnóstico
+    console.log("[webhook/waha] FULL_PAYLOAD:", JSON.stringify(body).slice(0, 1200));
 
     const sessionName: string = body.session ?? "";
     if (!sessionName) return NextResponse.json({ received: true });
@@ -47,21 +48,34 @@ export async function POST(req: Request) {
     if (event === "message") {
       const payload = body.payload ?? {};
       const fromMe: boolean = payload.fromMe ?? false;
-      const rawPhone: string = payload.from ?? payload.chatId ?? "";
-      const phone = rawPhone.replace("@c.us", "").replace(/\D/g, "");
+
+      // rawChatId = JID original ex: "5511999999999@c.us" ou "123456789@lid"
+      // Guardamos intacto para usar no envio de respostas (especialmente LIDs)
+      const rawChatId: string = payload.from ?? payload.chatId ?? "";
+
+      // Para grupos ignoramos (chatId termina em @g.us)
+      if (rawChatId.endsWith("@g.us")) return NextResponse.json({ received: true });
+
+      // phone = apenas os dígitos do número (para exibição e busca de pacientes)
+      const phoneDigits = rawChatId.replace(/@\S+/g, "").replace(/\D/g, "");
       const messageBody: string = payload.body ?? payload.text ?? "";
-      const contactName: string | null = payload._data?.notifyName ?? payload.notifyName ?? null;
+      const contactName: string | null =
+        payload._data?.notifyName ?? payload.notifyName ?? payload.pushName ?? null;
       const timestamp = payload.timestamp
         ? new Date(payload.timestamp * 1000)
         : new Date();
 
-      if (phone && messageBody) {
-        // Verifica se já existe um paciente com esse número
-        const digits = phone.startsWith("55") ? phone : `55${phone}`;
+      if (phoneDigits && messageBody) {
+        // Normaliza phone: garante prefixo 55 se tiver tamanho brasileiro (10-11 dígitos sem DDI)
+        const phone = phoneDigits.length <= 11
+          ? `55${phoneDigits}`
+          : phoneDigits;
+
+        // Verifica se já existe um paciente com esse número (últimos 10 dígitos)
         const existing = await prisma.patient.findFirst({
           where: {
             tenantId: tenant.id,
-            phone: { contains: digits.slice(-10) },
+            phone: { contains: phone.slice(-10) },
           },
         });
 
@@ -72,8 +86,8 @@ export async function POST(req: Request) {
           const newPatient = await prisma.patient.create({
             data: {
               tenantId: tenant.id,
-              name: contactName ?? `Contato ${digits}`,
-              phone: digits,
+              name: contactName ?? `Contato ${phone}`,
+              phone,
               stage: "LEAD",
               isActive: true,
             },
@@ -84,13 +98,14 @@ export async function POST(req: Request) {
         await prisma.inboxMessage.create({
           data: {
             tenantId: tenant.id,
-            phone: digits,
+            phone,
+            chatId: rawChatId, // JID original — essencial para responder corretamente
             name: contactName,
             body: messageBody,
             fromMe,
             timestamp,
             patientId,
-            read: fromMe, // mensagens enviadas por mim já são marcadas como lidas
+            read: fromMe,
           },
         });
       }
