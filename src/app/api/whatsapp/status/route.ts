@@ -8,15 +8,24 @@ export async function GET() {
     const tenantId = await getTenantId();
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: {
-        whatsappStatus: true,
-        whatsappPhone: true,
-        whatsappConnectedAt: true,
-      },
+      select: { whatsappStatus: true, whatsappPhone: true, whatsappConnectedAt: true },
     });
 
-    // Se está conectando, verifica o WAHA diretamente para detectar conexão sem webhook
-    if (tenant?.whatsappStatus === "CONNECTING") {
+    // Se já está conectado no banco, confirma com WAHA
+    if (tenant?.whatsappStatus === "CONNECTED") {
+      const wahaStatus = await wahaGetStatus(tenantId);
+      if (wahaStatus === "STOPPED" || wahaStatus === "FAILED") {
+        await prisma.tenant.update({
+          where: { id: tenantId },
+          data: { whatsappStatus: "DISCONNECTED", whatsappQRCode: null },
+        });
+        return NextResponse.json({ whatsappStatus: "DISCONNECTED" });
+      }
+      return NextResponse.json(tenant);
+    }
+
+    // Se não está conectado, sempre verifica WAHA diretamente
+    if (tenant?.whatsappStatus === "CONNECTING" || tenant?.whatsappStatus === "DISCONNECTED") {
       const wahaStatus = await wahaGetStatus(tenantId);
 
       if (wahaStatus === "WORKING") {
@@ -28,15 +37,12 @@ export async function GET() {
             whatsappQRCode: null,
           },
         });
-        return NextResponse.json({ whatsappStatus: "CONNECTED", whatsappPhone: tenant.whatsappPhone, whatsappConnectedAt: new Date() });
+        return NextResponse.json({ whatsappStatus: "CONNECTED" });
       }
 
-      if (wahaStatus === "FAILED" || wahaStatus === "STOPPED") {
-        await prisma.tenant.update({
-          where: { id: tenantId },
-          data: { whatsappStatus: "DISCONNECTED", whatsappQRCode: null },
-        });
-        return NextResponse.json({ whatsappStatus: "DISCONNECTED", whatsappPhone: null, whatsappConnectedAt: null });
+      // Timeout ou erro no WAHA — não muda o status no banco, só retorna o atual
+      if (wahaStatus === "STOPPED") {
+        return NextResponse.json({ whatsappStatus: tenant.whatsappStatus });
       }
     }
 
