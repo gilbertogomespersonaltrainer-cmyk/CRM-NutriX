@@ -20,11 +20,22 @@ export async function wahaStartSession(tenantId: string) {
 
   await new Promise(r => setTimeout(r, 800));
 
-  // Cria sessão nova com start: true
+  const APP_URL = process.env.NEXTAUTH_URL || "https://crmnutrix.com.br";
+
+  // Cria sessão nova com start: true e webhook configurado
   const createRes = await fetch(`${WAHA_URL}/api/sessions`, {
     method: "POST",
     headers: wahaHeaders(),
-    body: JSON.stringify({ name, start: true }),
+    body: JSON.stringify({
+      name,
+      start: true,
+      webhooks: [
+        {
+          url: `${APP_URL}/api/webhooks/whatsapp`,
+          events: ["session.status"],
+        },
+      ],
+    }),
   });
 
   // Se a criação falhou (sessão ainda existe), força o start
