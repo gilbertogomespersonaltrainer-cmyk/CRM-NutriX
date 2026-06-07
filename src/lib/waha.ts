@@ -32,7 +32,7 @@ export async function wahaStartSession(tenantId: string) {
       webhooks: [
         {
           url: `${APP_URL}/api/webhooks/whatsapp`,
-          events: ["session.status"],
+          events: ["session.status", "qr"],
         },
       ],
     }),
@@ -49,9 +49,19 @@ export async function wahaStartSession(tenantId: string) {
 
 export async function wahaGetQRCode(tenantId: string): Promise<string | null> {
   const name = wahaSessionName(tenantId);
-  const res = await fetch(`${WAHA_URL}/api/${name}/auth/qr`, {
-    headers: wahaHeaders(),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let res: Response;
+  try {
+    res = await fetch(`${WAHA_URL}/api/${name}/auth/qr`, {
+      headers: wahaHeaders(),
+      signal: controller.signal,
+    });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!res.ok) return null;
 
   const contentType = res.headers.get("content-type") || "";

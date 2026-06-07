@@ -43,6 +43,22 @@ export async function POST(req: Request) {
       });
     }
 
+    // QR code gerado pelo WAHA — salva no banco para o frontend buscar
+    if (event === "qr") {
+      const qrPayload = body.payload?.qr ?? body.payload ?? null;
+      if (qrPayload) {
+        const qrBase64 = typeof qrPayload === "string"
+          ? (qrPayload.startsWith("data:") ? qrPayload : `data:image/png;base64,${qrPayload}`)
+          : null;
+        if (qrBase64) {
+          await prisma.tenant.update({
+            where: { id: tenant.id },
+            data: { whatsappQRCode: qrBase64, whatsappStatus: "CONNECTING" },
+          });
+        }
+      }
+    }
+
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error("[webhook/waha] erro:", err);
