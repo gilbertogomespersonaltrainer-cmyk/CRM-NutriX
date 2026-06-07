@@ -35,8 +35,6 @@ type TenantSettings = {
   defaultDuration: number;
   whatsappStatus: string;
   appointmentTypes: string[];
-  zapiInstanceId: string | null;
-  zapiClientToken: string | null;
 };
 
 type ServiceType = {
@@ -86,7 +84,6 @@ export default function ConfiguracoesPage() {
   const [whatsappStatus, setWhatsappStatus] = useState("DISCONNECTED");
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
-  const [savingZapi, setSavingZapi] = useState(false);
 
   // New service type
   const [newService, setNewService] = useState({ name: "", defaultPrice: "" });
@@ -234,27 +231,6 @@ export default function ConfiguracoesPage() {
     toast({ title: "WhatsApp desconectado", variant: "success" });
   }
 
-  async function saveZapiCredentials() {
-    if (!zapiInstanceId.trim() || !zapiClientToken.trim()) {
-      toast({ title: "Preencha o Instance ID e o Client Token", variant: "error" });
-      return;
-    }
-    setSavingZapi(true);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ zapiInstanceId: zapiInstanceId.trim(), zapiClientToken: zapiClientToken.trim() }),
-      });
-      if (res.ok) {
-        toast({ title: "Credenciais Zapi salvas!", description: "Agora clique em Conectar WhatsApp.", variant: "success" });
-      } else {
-        toast({ title: "Erro ao salvar credenciais", variant: "error" });
-      }
-    } finally {
-      setSavingZapi(false);
-    }
-  }
 
   async function addServiceType(e: React.FormEvent) {
     e.preventDefault();
