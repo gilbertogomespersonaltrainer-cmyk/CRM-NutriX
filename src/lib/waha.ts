@@ -30,9 +30,20 @@ export async function wahaGetQRCode(tenantId: string): Promise<string | null> {
     headers: wahaHeaders(),
   });
   if (!res.ok) return null;
+
+  const contentType = res.headers.get("content-type") || "";
+  console.log("[waha] qr content-type:", contentType);
+
+  // WAHA Plus retorna PNG binário diretamente
+  if (contentType.includes("image/")) {
+    const buffer = await res.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    return `data:image/png;base64,${base64}`;
+  }
+
+  // Fallback: resposta JSON com { value: "data:image/png;base64,..." }
   const data = await res.json();
-  console.log("[waha] qr response:", JSON.stringify(data).slice(0, 200));
-  // WAHA retorna { value: "data:image/png;base64,..." }
+  console.log("[waha] qr json:", JSON.stringify(data).slice(0, 200));
   return data?.value ?? null;
 }
 
