@@ -42,7 +42,17 @@ function formatPhone(phone: string) {
   if (d.length === 12) return `+${d.slice(0,2)} (${d.slice(2,4)}) ${d.slice(4,8)}-${d.slice(8)}`;
   if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
   if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  // LID ou número não-padrão: formata os últimos 13 dígitos como número brasileiro
+  if (d.length > 13) {
+    const last13 = d.slice(-13);
+    return `+${last13.slice(0,2)} (${last13.slice(2,4)}) ${last13.slice(4,9)}-${last13.slice(9)}`;
+  }
   return phone;
+}
+
+// Retorna verdadeiro se o número é um LID (>13 dígitos) — não é um telefone real
+function isLidNumber(phone: string) {
+  return phone.replace(/\D/g, "").length > 13;
 }
 
 function formatTime(iso: string) {
@@ -62,7 +72,21 @@ function formatTimestamp(iso: string) {
 }
 
 function getDisplayName(conv: Conversation) {
-  return conv.patientName ?? conv.name ?? formatPhone(conv.phone);
+  // Prioridade: nome do paciente cadastrado > nome do WhatsApp (pushName) > número formatado
+  if (conv.patientName) return conv.patientName;
+  if (conv.name) return conv.name;
+  // Se for LID (número interno do WhatsApp), mostra "Contato WhatsApp"
+  if (isLidNumber(conv.phone)) return "Contato WhatsApp";
+  return formatPhone(conv.phone);
+}
+
+function getDisplaySubtitle(conv: Conversation) {
+  // Linha secundária: mostra o número real se tiver nome, ou omite LID
+  if (conv.patientName || conv.name) {
+    if (isLidNumber(conv.phone)) return "WhatsApp";
+    return formatPhone(conv.phone);
+  }
+  return null;
 }
 
 export default function InboxPage() {
@@ -218,6 +242,8 @@ export default function InboxPage() {
             filteredConvs.map(conv => {
               const isSelected = selectedPhone === conv.phone;
               const displayName = getDisplayName(conv);
+              const subtitle = getDisplaySubtitle(conv);
+              const avatarLetter = displayName === "Contato WhatsApp" ? "?" : (displayName[0]?.toUpperCase() ?? "?");
               return (
                 <button
                   key={conv.phone}
@@ -231,7 +257,7 @@ export default function InboxPage() {
                 >
                   {/* Avatar */}
                   <div className="w-10 h-10 rounded-xl flex-shrink-0 bg-gradient-to-br from-[#22c55e]/15 to-[#16a34a]/5 border border-[#22c55e]/20 flex items-center justify-center text-[#4ade80] font-bold text-sm">
-                    {displayName[0]?.toUpperCase() ?? "?"}
+                    {avatarLetter}
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -246,6 +272,9 @@ export default function InboxPage() {
                         {formatTime(conv.lastAt)}
                       </span>
                     </div>
+                    {subtitle && (
+                      <p className="text-[11px] text-[#444] truncate mt-0.5">{subtitle}</p>
+                    )}
                     <div className="flex items-center justify-between gap-1 mt-0.5">
                       <span className="text-xs text-[#555] truncate">{conv.lastMessage}</span>
                       {conv.unread > 0 && (
@@ -276,11 +305,15 @@ export default function InboxPage() {
           {/* Chat header */}
           <div className="px-5 py-3.5 border-b border-[#1a1a1a] flex items-center gap-3 bg-[#0a0a0a]">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#22c55e]/15 to-[#16a34a]/5 border border-[#22c55e]/20 flex items-center justify-center text-[#4ade80] font-bold text-sm flex-shrink-0">
-              {getDisplayName(selectedConv)[0]?.toUpperCase() ?? "?"}
+              {getDisplayName(selectedConv) === "Contato WhatsApp" ? "?" : getDisplayName(selectedConv)[0]?.toUpperCase() ?? "?"}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">{getDisplayName(selectedConv)}</p>
-              <p className="text-xs text-[#555]">{formatPhone(selectedConv.phone)}</p>
+              <p className="text-xs text-[#555]">
+                {isLidNumber(selectedConv.phone)
+                  ? "WhatsApp — sem número identificável"
+                  : formatPhone(selectedConv.phone)}
+              </p>
             </div>
             {selectedConv.patientId && (
               <Link
