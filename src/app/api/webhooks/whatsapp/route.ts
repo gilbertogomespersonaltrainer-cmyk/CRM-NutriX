@@ -43,6 +43,59 @@ export async function POST(req: Request) {
       });
     }
 
+    // Mensagem recebida — salva no inbox e cria lead se número desconhecido
+    if (event === "message") {
+      const payload = body.payload ?? {};
+      const fromMe: boolean = payload.fromMe ?? false;
+      const rawPhone: string = payload.from ?? payload.chatId ?? "";
+      const phone = rawPhone.replace("@c.us", "").replace(/\D/g, "");
+      const messageBody: string = payload.body ?? payload.text ?? "";
+      const contactName: string | null = payload._data?.notifyName ?? payload.notifyName ?? null;
+      const timestamp = payload.timestamp
+        ? new Date(payload.timestamp * 1000)
+        : new Date();
+
+      if (phone && messageBody) {
+        // Verifica se já existe um paciente com esse número
+        const digits = phone.startsWith("55") ? phone : `55${phone}`;
+        const existing = await prisma.patient.findFirst({
+          where: {
+            tenantId: tenant.id,
+            phone: { contains: digits.slice(-10) },
+          },
+        });
+
+        let patientId: string | null = existing?.id ?? null;
+
+        // Se não existe e a mensagem é de fora (não enviada por mim), cria Lead
+        if (!existing && !fromMe) {
+          const newPatient = await prisma.patient.create({
+            data: {
+              tenantId: tenant.id,
+              name: contactName ?? `Contato ${digits}`,
+              phone: digits,
+              stage: "LEAD",
+              isActive: true,
+            },
+          });
+          patientId = newPatient.id;
+        }
+
+        await prisma.inboxMessage.create({
+          data: {
+            tenantId: tenant.id,
+            phone: digits,
+            name: contactName,
+            body: messageBody,
+            fromMe,
+            timestamp,
+            patientId,
+            read: fromMe, // mensagens enviadas por mim já são marcadas como lidas
+          },
+        });
+      }
+    }
+
     // QR code gerado pelo WAHA — salva no banco para o frontend buscar
     if (event === "qr") {
       const qrPayload = body.payload?.qr ?? body.payload ?? null;

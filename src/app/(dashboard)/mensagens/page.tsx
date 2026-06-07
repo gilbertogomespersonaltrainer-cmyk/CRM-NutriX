@@ -11,7 +11,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
-import { Search, X, Send, CheckSquare, Square, MessageCircle, Loader2 } from "lucide-react";
+import { Search, Send, CheckSquare, Square, MessageCircle, Loader2, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type PatientStage = "LEAD" | "FIRST_CONSULTATION" | "ACTIVE" | "INACTIVE" | "REACTIVATED";
 
@@ -25,6 +26,12 @@ type Patient = {
   howFoundUs: string | null;
 };
 
+type Template = {
+  id: string;
+  type: string;
+  content: string;
+};
+
 const STAGE_LABELS: Record<PatientStage, { label: string; color: string }> = {
   LEAD:               { label: "Lead",        color: "bg-purple-500/15 text-purple-400 border-purple-500/20" },
   FIRST_CONSULTATION: { label: "1ª Consulta", color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
@@ -35,6 +42,48 @@ const STAGE_LABELS: Record<PatientStage, { label: string; color: string }> = {
 
 const STAGES: PatientStage[] = ["LEAD", "FIRST_CONSULTATION", "ACTIVE", "INACTIVE", "REACTIVATED"];
 
+// All template types with human-readable labels and descriptions
+const TEMPLATE_META: Record<string, { label: string; description: string }> = {
+  CONFIRMATION:      { label: "✅ Confirmação de Consulta",     description: "Enviada ao confirmar um agendamento" },
+  REMINDER_8D:       { label: "📅 Lembrete 8 Dias Antes",       description: "Lembrete enviado 8 dias antes da consulta" },
+  REMINDER:          { label: "⏰ Lembrete 24h Antes",           description: "Lembrete enviado na véspera da consulta" },
+  REMINDER_2H:       { label: "🔔 Lembrete 2h Antes",           description: "Lembrete enviado 2 horas antes da consulta" },
+  FOLLOWUP:          { label: "💬 Follow-up de Inativo",         description: "Para pacientes que sumiram" },
+  POST_CONSULTATION: { label: "🌱 Pós-Consulta",                 description: "Enviada dias após a consulta" },
+  BIRTHDAY:          { label: "🎂 Aniversário",                  description: "Mensagem de parabéns automática" },
+  REACTIVATION_30:   { label: "🔁 Reativação 30 dias",          description: "Para pacientes inativos há 30 dias" },
+  REACTIVATION_60:   { label: "🔁 Reativação 60 dias",          description: "Para pacientes inativos há 60 dias" },
+  REACTIVATION_90:   { label: "🔁 Reativação 90 dias",          description: "Para pacientes inativos há 90 dias" },
+  WELCOME:           { label: "👋 Boas-vindas",                  description: "Enviada ao cadastrar um novo paciente" },
+  PLAN_RENEWAL:      { label: "🔄 Renovação de Plano",           description: "Lembrete de renovação do plano alimentar" },
+};
+
+// Default contents for templates not yet saved in DB
+const TEMPLATE_DEFAULTS: Record<string, string> = {
+  CONFIRMATION:      "Oi {nome_paciente}, tudo bem? Aqui é a {nome_nutricionista} 😊 Passando pra confirmar nosso encontro dia {data_consulta} às {hora_consulta}. Pode confirmar pra mim? Qualquer coisa me avisa que a gente ajusta!",
+  REMINDER_8D:       "Olá {nome_paciente}! Passando para lembrar que sua {tipo_consulta} com {nome_nutricionista} está agendada para {data_consulta} às {hora_consulta}. Confirme sua presença respondendo esta mensagem! 😊",
+  REMINDER:          "Oi {nome_paciente}! Só passando pra te lembrar que amanhã tem a nossa consulta, às {hora_consulta} 😊 Tô preparando tudo com carinho pra gente conversar. Te espero!",
+  REMINDER_2H:       "Oi {nome_paciente}! Daqui a pouquinho a gente se encontra, hein? Às {hora_consulta} te espero 😊 Se precisar de algo antes, é só me chamar!",
+  FOLLOWUP:          "Oi {nome_paciente}, tudo bem com você? Faz um tempinho que a gente não conversa e fiquei curiosa pra saber como você tá, como tá se sentindo, se tá conseguindo manter a rotina... Me conta! 💚",
+  POST_CONSULTATION: "Oi {nome_paciente}! Como você tá? Queria saber como foi esses primeiros dias depois da nossa conversa. Tá conseguindo encaixar as mudanças na rotina? Pode me contar sem medo, tô aqui pra te ajudar no que precisar 😊",
+  BIRTHDAY:          "Oi {nome_paciente}! Hoje é seu dia e eu não podia deixar de te desejar tudo de mais lindo! 🎂 Que esse novo ano seja cheio de saúde, conquistas e muita comida gostosa (sim, pode comer bolo! 😄). Um abraço enorme! — {nome_nutricionista} 💚",
+  REACTIVATION_30:   "Oi {nome_paciente}, tudo bem? Aqui é a {nome_nutricionista}. Faz um tempinho que a gente não se fala e eu lembrei de você! Como você tá? Tá conseguindo se cuidar? Me conta como andam as coisas 😊",
+  REACTIVATION_60:   "Oi {nome_paciente}! Tudo bem com você? Eu tava aqui organizando minha agenda e lembrei de você. Espero que esteja bem! Como tá a rotina? Tô com saudade das nossas conversas 😊 Me dá um oi quando puder!",
+  REACTIVATION_90:   "Oi {nome_paciente}, quanto tempo! Tudo bem com você? Tava pensando em você esses dias e queria muito saber como você tá. A gente construiu tanta coisa junta e eu fico torcendo pra você estar bem! Se quiser conversar, tô por aqui 💚",
+  WELCOME:           "Oi {nome_paciente}! Que bom ter você aqui 😊 Sou a {nome_nutricionista} e vou te acompanhar nessa jornada. Pode contar comigo pra qualquer dúvida, tá? Seja bem-vindo(a)! 💚",
+  PLAN_RENEWAL:      "Oi {nome_paciente}, tudo bem? Passando pra te avisar que seu plano tá chegando ao fim. Queria conversar com você sobre como foi até aqui e o que a gente pode fazer daqui pra frente. Posso te ligar ou prefere que a gente converse por aqui? 😊",
+};
+
+// All available variables
+const VARIABLES = [
+  { key: "{nome_paciente}",      label: "Nome do paciente" },
+  { key: "{nome_nutricionista}", label: "Seu nome" },
+  { key: "{nome_clinica}",       label: "Nome da clínica" },
+  { key: "{data_consulta}",      label: "Data da consulta" },
+  { key: "{hora_consulta}",      label: "Hora da consulta" },
+  { key: "{tipo_consulta}",      label: "Tipo de consulta" },
+];
+
 function formatPhone(phone: string) {
   const d = phone.replace(/\D/g, "");
   if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
@@ -44,6 +93,7 @@ function formatPhone(phone: string) {
 
 export default function MensagensPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedStages, setSelectedStages] = useState<Set<PatientStage>>(new Set());
@@ -53,6 +103,8 @@ export default function MensagensPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [showTemplates, setShowTemplates] = useState(true);
+  const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchPatients = useCallback(async () => {
@@ -67,14 +119,25 @@ export default function MensagensPage() {
     setLoading(false);
   }, []);
 
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const res = await fetch("/api/templates");
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates(Array.isArray(data) ? data : []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     fetchPatients();
-  }, [fetchPatients]);
+    fetchTemplates();
+  }, [fetchPatients, fetchTemplates]);
 
   // All unique tags
   const allTags = Array.from(new Set(patients.flatMap((p) => p.tags))).sort();
 
-  // Filtered patients based on filters + search
+  // Filtered patients
   const filteredPatients = patients.filter((p) => {
     if (selectedStages.size > 0 && !selectedStages.has(p.stage)) return false;
     if (selectedTags.size > 0 && !Array.from(selectedTags).some((t) => p.tags.includes(t))) return false;
@@ -136,10 +199,24 @@ export default function MensagensPage() {
     }, 0);
   }
 
+  function loadTemplate(type: string) {
+    const saved = templates.find(t => t.type === type);
+    const content = saved?.content ?? TEMPLATE_DEFAULTS[type] ?? "";
+    setMessage(content);
+    setActiveTemplate(type);
+    textareaRef.current?.focus();
+  }
+
   const selectedPatients = patients.filter((p) => selectedIds.has(p.id));
   const previewPatient = selectedPatients[0];
   const previewMessage = previewPatient
-    ? message.replace(/\{nome_paciente\}/g, previewPatient.name)
+    ? message
+        .replace(/{nome_paciente}/g, previewPatient.name)
+        .replace(/{nome_nutricionista}/g, "Dra. Nutricionista")
+        .replace(/{nome_clinica}/g, "Clínica NutriX")
+        .replace(/{data_consulta}/g, "15/06/2026")
+        .replace(/{hora_consulta}/g, "14:00")
+        .replace(/{tipo_consulta}/g, "Consulta")
     : message;
 
   async function handleSend() {
@@ -162,6 +239,7 @@ export default function MensagensPage() {
         if (data.sent > 0) {
           setSelectedIds(new Set());
           setMessage("");
+          setActiveTemplate(null);
         }
       } else {
         toast({ title: data.error || "Erro ao enviar mensagens", variant: "error" });
@@ -179,6 +257,60 @@ export default function MensagensPage() {
       <div>
         <h1 className="font-outfit text-2xl font-bold text-white">Mensagens em Massa</h1>
         <p className="text-sm text-[#666] mt-1">Envie mensagens para múltiplos pacientes via WhatsApp</p>
+      </div>
+
+      {/* Templates Panel */}
+      <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowTemplates(v => !v)}
+          className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition-colors"
+        >
+          <div className="flex items-center gap-2.5">
+            <BookOpen className="h-4 w-4 text-[#22c55e]" />
+            <span className="text-sm font-semibold text-white">Modelos de Mensagem</span>
+            {activeTemplate && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#22c55e]/15 text-[#4ade80] border border-[#22c55e]/20">
+                {TEMPLATE_META[activeTemplate]?.label ?? activeTemplate}
+              </span>
+            )}
+          </div>
+          {showTemplates
+            ? <ChevronUp className="h-4 w-4 text-[#555]" />
+            : <ChevronDown className="h-4 w-4 text-[#555]" />}
+        </button>
+
+        {showTemplates && (
+          <div className="border-t border-[#1a1a1a] p-4">
+            <p className="text-xs text-[#555] mb-3">
+              Clique em um modelo para carregá-lo no compositor. Os modelos podem ser editados em{" "}
+              <a href="/configuracoes" className="text-[#22c55e] hover:underline">Configurações → Templates</a>.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
+              {Object.entries(TEMPLATE_META).map(([type, meta]) => {
+                const isActive = activeTemplate === type;
+                const hasSaved = templates.some(t => t.type === type);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => loadTemplate(type)}
+                    className={cn(
+                      "text-left px-3 py-2.5 rounded-xl border transition-all",
+                      isActive
+                        ? "bg-[#22c55e]/10 border-[#22c55e]/30 text-white"
+                        : "bg-[#0d0d0d] border-[#1a1a1a] text-[#888] hover:border-[#333] hover:text-[#ccc]"
+                    )}
+                  >
+                    <p className="text-xs font-medium leading-snug">{meta.label}</p>
+                    <p className="text-[10px] text-[#555] mt-0.5 leading-tight">{meta.description}</p>
+                    {hasSaved && (
+                      <span className="inline-block mt-1 text-[9px] text-[#22c55e]/60">personalizado</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -314,31 +446,55 @@ export default function MensagensPage() {
         {/* Right: Message composer */}
         <div className="space-y-4">
           <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl p-4 space-y-4">
-            <p className="text-xs font-semibold text-[#666] uppercase tracking-wider">Mensagem</p>
+            <p className="text-xs font-semibold text-[#666] uppercase tracking-wider">Compositor de Mensagem</p>
 
-            {/* Variable chips */}
-            <div className="flex flex-wrap gap-2">
-              <p className="text-xs text-[#555] w-full">Variáveis disponíveis:</p>
-              <button
-                onClick={() => insertVariable("{nome_paciente}")}
-                className="px-2.5 py-1 rounded-lg text-xs bg-[#22c55e]/10 text-[#4ade80] border border-[#22c55e]/20 hover:bg-[#22c55e]/20 transition-colors font-mono"
-              >
-                {"{nome_paciente}"}
-              </button>
+            {/* Variables */}
+            <div className="space-y-2">
+              <p className="text-xs text-[#555]">Clique para inserir uma variável:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {VARIABLES.map(v => (
+                  <button
+                    key={v.key}
+                    onClick={() => insertVariable(v.key)}
+                    title={v.label}
+                    className="px-2.5 py-1 rounded-lg text-xs bg-[#111] text-[#888] border border-[#1e1e1e] hover:bg-[#22c55e]/10 hover:text-[#4ade80] hover:border-[#22c55e]/30 transition-all font-mono"
+                  >
+                    {v.key}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <Textarea
               ref={textareaRef}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Digite sua mensagem... Use {nome_paciente} para personalizar."
+              onChange={(e) => {
+                setMessage(e.target.value);
+                if (activeTemplate) setActiveTemplate(null); // clear highlight if user edits
+              }}
+              placeholder="Selecione um modelo acima ou escreva sua mensagem aqui..."
               className="min-h-[160px] resize-none"
             />
+
+            {/* Variable legend */}
+            <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-3">
+              <p className="text-[10px] font-semibold text-[#555] uppercase tracking-wider mb-2">Significado das variáveis</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                {VARIABLES.map(v => (
+                  <div key={v.key} className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono text-[#22c55e]/70">{v.key}</span>
+                    <span className="text-[10px] text-[#444]">→ {v.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {/* Preview */}
             {message && previewPatient && (
               <div className="space-y-2">
-                <p className="text-xs text-[#555]">Preview para <span className="text-[#888]">{previewPatient.name}</span>:</p>
+                <p className="text-xs text-[#555]">
+                  Preview para <span className="text-[#888]">{previewPatient.name}</span>:
+                </p>
                 <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3">
                   <div className="flex items-start gap-2">
                     <MessageCircle className="h-4 w-4 text-[#22c55e] mt-0.5 flex-shrink-0" />
@@ -388,7 +544,8 @@ export default function MensagensPage() {
           <DialogHeader>
             <DialogTitle>Confirmar envio</DialogTitle>
             <DialogDescription>
-              Você está prestes a enviar uma mensagem para <strong>{selectedIds.size} paciente{selectedIds.size !== 1 ? "s" : ""}</strong> via WhatsApp.
+              Você está prestes a enviar uma mensagem para{" "}
+              <strong>{selectedIds.size} paciente{selectedIds.size !== 1 ? "s" : ""}</strong> via WhatsApp.
             </DialogDescription>
           </DialogHeader>
           <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3 max-h-32 overflow-y-auto">

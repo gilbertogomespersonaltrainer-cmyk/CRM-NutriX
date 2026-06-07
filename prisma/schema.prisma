@@ -161,6 +161,7 @@ model Tenant {
   whatsAppLogs        WhatsAppLog[]
   messageTemplates    MessageTemplate[]
   passwordResetTokens PasswordResetToken[]
+  inboxMessages       InboxMessage[]
 
   @@map("tenants")
 }
@@ -203,13 +204,14 @@ model Patient {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  referredBy   Patient?      @relation("PatientReferrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referrals    Patient[]     @relation("PatientReferrals")
-  appointments Appointment[]
-  payments     Payment[]
-  followUpLogs FollowUpLog[]
-  whatsAppLogs WhatsAppLog[]
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  referredBy    Patient?      @relation("PatientReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals     Patient[]     @relation("PatientReferrals")
+  appointments  Appointment[]
+  payments      Payment[]
+  followUpLogs  FollowUpLog[]
+  whatsAppLogs  WhatsAppLog[]
+  inboxMessages InboxMessage[]
 
   @@map("patients")
 }
@@ -355,6 +357,26 @@ model MessageTemplate {
 
   @@unique([tenantId, type])
   @@map("message_templates")
+}
+
+model InboxMessage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  phone     String   // número normalizado (só dígitos com DDI)
+  name      String?  // nome do contato se disponível
+  body      String
+  fromMe    Boolean  @default(false)
+  timestamp DateTime
+  patientId String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, phone])
+  @@index([tenantId, createdAt])
+  @@map("inbox_messages")
 }
 
 model HotmartPurchase {

@@ -43,7 +43,7 @@ export async function wahaStartSession(tenantId: string) {
         webhooks: [
           {
             url: `${APP_URL}/api/webhooks/whatsapp`,
-            events: ["session.status", "qr"],
+            events: ["session.status", "qr", "message"],
           },
         ],
       }),
