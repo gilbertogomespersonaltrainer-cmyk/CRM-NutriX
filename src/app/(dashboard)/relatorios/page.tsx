@@ -320,6 +320,8 @@ export default function RelatoriosPage() {
                 <button
                   onClick={() => {
                     if (locked) return;
+                    setData(null);
+                    setFetchError(null);
                     setReportType(t.key);
                   }}
                   title={locked ? "Disponível no plano Professional" : undefined}
@@ -387,7 +389,7 @@ export default function RelatoriosPage() {
       {/* ── FINANCIAL ── */}
       {!loading && !fetchError && data && reportType === "financial" && (() => {
         const d = data as FinancialData;
-        if (!d.summary) return null;
+        if (!d.summary || !d.byServiceType || !d.byMethod || !Array.isArray(d.rows)) return null;
         return (
           <div className="space-y-5">
             {/* Summary Cards */}
@@ -503,7 +505,7 @@ export default function RelatoriosPage() {
       {/* ── DEFAULTERS ── */}
       {!loading && !fetchError && data && reportType === "defaulters" && (() => {
         const d = data as DefaultersData;
-        if (!d.summary) return null;
+        if (!d.summary || !Array.isArray(d.rows)) return null;
         return (
           <div className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -567,7 +569,7 @@ export default function RelatoriosPage() {
       {/* ── APPOINTMENTS ── */}
       {!loading && !fetchError && data && reportType === "appointments" && (() => {
         const d = data as AppointmentsData;
-        if (!d.summary) return null;
+        if (!d.summary || !Array.isArray(d.rows)) return null;
         return (
           <div className="space-y-5">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -631,7 +633,7 @@ export default function RelatoriosPage() {
       {/* ── PATIENTS ── */}
       {!loading && !fetchError && data && reportType === "patients" && (() => {
         const d = data as PatientsData;
-        if (!d.summary) return null;
+        if (!d.summary || !d.byOrigin || !Array.isArray(d.rows)) return null;
         return (
           <div className="space-y-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -650,7 +652,7 @@ export default function RelatoriosPage() {
               ))}
             </div>
 
-            {Object.keys(d.byOrigin).length > 0 && (
+            {d.byOrigin && Object.keys(d.byOrigin).length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="text-sm text-[#666]">Origem dos Novos Pacientes</CardTitle></CardHeader>
                 <CardContent>
