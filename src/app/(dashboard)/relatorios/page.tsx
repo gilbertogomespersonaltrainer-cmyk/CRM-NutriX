@@ -138,14 +138,23 @@ export default function RelatoriosPage() {
   const [endDate, setEndDate] = useState(defaultRange.end);
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchReport = useCallback(async () => {
     if (ADVANCED_REPORTS.includes(reportType) && !isPro) return;
     setLoading(true);
+    setFetchError(null);
+    setData(null);
     try {
       const res = await fetch(`/api/reports?type=${reportType}&startDate=${startDate}&endDate=${endDate}`);
       const json = await res.json();
+      if (!res.ok) {
+        setFetchError(json?.error || "Erro ao carregar relatório");
+        return;
+      }
       setData(json);
+    } catch {
+      setFetchError("Erro de conexão ao carregar relatório");
     } finally {
       setLoading(false);
     }
@@ -361,9 +370,24 @@ export default function RelatoriosPage() {
         </div>
       )}
 
+      {/* Error */}
+      {!loading && fetchError && (
+        <div className="rounded-xl border border-[#ef4444]/20 bg-[#ef4444]/5 px-5 py-4 flex items-center gap-3">
+          <AlertCircle className="h-4 w-4 text-[#ef4444] shrink-0" />
+          <p className="text-sm text-[#ef4444]">{fetchError}</p>
+          <button
+            onClick={fetchReport}
+            className="ml-auto text-xs text-[#ef4444] underline hover:no-underline"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
       {/* ── FINANCIAL ── */}
-      {!loading && data && reportType === "financial" && (() => {
+      {!loading && !fetchError && data && reportType === "financial" && (() => {
         const d = data as FinancialData;
+        if (!d.summary) return null;
         return (
           <div className="space-y-5">
             {/* Summary Cards */}
@@ -477,8 +501,9 @@ export default function RelatoriosPage() {
       })()}
 
       {/* ── DEFAULTERS ── */}
-      {!loading && data && reportType === "defaulters" && (() => {
+      {!loading && !fetchError && data && reportType === "defaulters" && (() => {
         const d = data as DefaultersData;
+        if (!d.summary) return null;
         return (
           <div className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -540,8 +565,9 @@ export default function RelatoriosPage() {
       })()}
 
       {/* ── APPOINTMENTS ── */}
-      {!loading && data && reportType === "appointments" && (() => {
+      {!loading && !fetchError && data && reportType === "appointments" && (() => {
         const d = data as AppointmentsData;
+        if (!d.summary) return null;
         return (
           <div className="space-y-5">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -603,8 +629,9 @@ export default function RelatoriosPage() {
       })()}
 
       {/* ── PATIENTS ── */}
-      {!loading && data && reportType === "patients" && (() => {
+      {!loading && !fetchError && data && reportType === "patients" && (() => {
         const d = data as PatientsData;
+        if (!d.summary) return null;
         return (
           <div className="space-y-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
