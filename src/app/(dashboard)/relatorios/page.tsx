@@ -131,16 +131,26 @@ export default function RelatoriosPage() {
   const plan = session?.user?.subscriptionPlan;
   const isPro = isProfessional(plan);
 
-  const defaultRange = getCurrentMonthRange();
-  // Default to first basic tab if not professional
+  // Datas inicializadas vazias para evitar mismatch de hidratação SSR↔client
+  // (servidor usa UTC, cliente usa horário local do Brasil)
   const [reportType, setReportType] = useState<ReportType>("appointments");
-  const [startDate, setStartDate] = useState(defaultRange.start);
-  const [endDate, setEndDate] = useState(defaultRange.end);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [mounted, setMounted] = useState(false);
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Inicializa datas apenas no cliente, após hidratação
+  useEffect(() => {
+    const range = getCurrentMonthRange();
+    setStartDate(range.start);
+    setEndDate(range.end);
+    setMounted(true);
+  }, []);
+
   const fetchReport = useCallback(async () => {
+    if (!startDate || !endDate) return; // aguarda inicialização client-side
     if (ADVANCED_REPORTS.includes(reportType) && !isPro) return;
     setLoading(true);
     setFetchError(null);
@@ -264,24 +274,32 @@ export default function RelatoriosPage() {
         <hr className="mt-3 border-gray-200" />
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 print:hidden">
+      {/* Filters — só renderiza no cliente para evitar mismatch de hidratação */}
+      <div className="flex flex-wrap items-center gap-3 print:hidden" suppressHydrationWarning>
         <div className="flex items-center gap-2 bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2">
           <Calendar className="h-3.5 w-3.5 text-[#666]" />
           <span className="text-xs text-[#666]">De</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-            className="bg-transparent text-white text-sm outline-none cursor-pointer"
-          />
+          {mounted ? (
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="bg-transparent text-white text-sm outline-none cursor-pointer"
+            />
+          ) : (
+            <span className="text-white text-sm w-28 h-5 bg-[#1e1e1e] rounded animate-pulse" />
+          )}
           <span className="text-xs text-[#666]">até</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={e => setEndDate(e.target.value)}
-            className="bg-transparent text-white text-sm outline-none cursor-pointer"
-          />
+          {mounted ? (
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="bg-transparent text-white text-sm outline-none cursor-pointer"
+            />
+          ) : (
+            <span className="text-white text-sm w-28 h-5 bg-[#1e1e1e] rounded animate-pulse" />
+          )}
         </div>
         <div className="flex gap-1">
           {[
@@ -707,26 +725,20 @@ export default function RelatoriosPage() {
         );
       })()}
 
-      {/* Print styles */}
-      <style jsx global>{`
-        @media print {
-          body { background: white !important; color: black !important; }
-          .print\\:hidden { display: none !important; }
-          .print\\:block { display: block !important; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ddd !important; padding: 8px 10px !important; color: black !important; background: white !important; font-size: 12px; }
-          th { background: #f5f5f5 !important; font-weight: 700; }
-          .rounded-2xl, .rounded-xl, .rounded-lg { border-radius: 4px !important; }
-          [class*="bg-["] { background: white !important; border: 1px solid #eee !important; }
-          [class*="text-[#22"] { color: #16a34a !important; }
-          [class*="text-[#ef"] { color: #dc2626 !important; }
-          [class*="text-[#f5"] { color: #d97706 !important; }
-          [class*="text-white"] { color: black !important; }
-          [class*="text-[#a1"] { color: #555 !important; }
-          [class*="text-[#88"] { color: #666 !important; }
-          [class*="text-[#66"] { color: #777 !important; }
-        }
-      `}</style>
+      {/* Print styles — usando dangerouslySetInnerHTML para evitar styled-jsx no Next.js 16 */}
+      {mounted && (
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            body { background: white !important; color: black !important; }
+            .print\\:hidden { display: none !important; }
+            .print\\:block { display: block !important; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd !important; padding: 8px 10px !important; color: black !important; background: white !important; font-size: 12px; }
+            th { background: #f5f5f5 !important; font-weight: 700; }
+            .rounded-2xl, .rounded-xl, .rounded-lg { border-radius: 4px !important; }
+          }
+        `}} />
+      )}
     </div>
   );
 }
