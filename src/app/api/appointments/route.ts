@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { sendTextMessage } from "@/lib/whatsapp";
+import { wahaSendText } from "@/lib/waha";
 import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
 
 export async function GET(req: Request) {
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
             tipo_consulta: appointment.consultationType || "",
           });
 
-          await sendTextMessage(tenantId, patient.phone, message);
+          await wahaSendText(tenantId, patient.phone, message);
           await prisma.appointment.update({
             where: { id: appointment.id },
             data: { confirmationSent: true },
