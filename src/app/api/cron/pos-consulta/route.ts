@@ -1,31 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-async function sendWhatsApp(instanceName: string, apiUrl: string, apiKey: string, phone: string, message: string) {
-  const cleanPhone = phone.replace(/\D/g, "");
-  const res = await fetch(`${apiUrl}/message/sendText/${instanceName}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: apiKey },
-    body: JSON.stringify({ number: `55${cleanPhone}`, text: message }),
-  });
-  if (!res.ok) throw new Error(`WhatsApp error: ${res.status}`);
-}
+import { wahaSendText } from "@/lib/waha";
 
 export async function GET(req: Request) {
-  const secret = req.headers.get("x-cron-secret") ?? new URL(req.url).searchParams.get("secret");
+  const secret = req.headers.get("authorization")?.replace("Bearer ", "")
+    ?? req.headers.get("x-cron-secret")
+    ?? new URL(req.url).searchParams.get("secret");
+
   if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const todayDayOfWeek = new Date().getDay(); // 0=Dom, 1=Seg ... 6=Sab
-  const apiUrl = process.env.EVOLUTION_API_URL;
-  const apiKey = process.env.EVOLUTION_API_KEY;
 
-  if (!apiUrl || !apiKey) {
-    return NextResponse.json({ error: "Evolution API não configurada" }, { status: 500 });
-  }
-
-  // Busca tenants com pós-consulta ativo e configurado para hoje
+  // Busca tenants com pós-consulta ativo, configurado para hoje e WhatsApp conectado
   const tenants = await prisma.tenant.findMany({
     where: {
       postConsultEnabled: true,
@@ -48,7 +36,6 @@ export async function GET(req: Request) {
     const sixDaysAgo = new Date();
     sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
 
-    // Todos os pacientes ativos em acompanhamento, sem restrição de data de consulta
     const patients = await prisma.patient.findMany({
       where: {
         tenantId: tenant.id,
@@ -68,15 +55,13 @@ export async function GET(req: Request) {
       const message = template.content.replace(/\{nome_paciente\}/g, firstName);
 
       try {
-        await sendWhatsApp(tenant.id, apiUrl, apiKey, patient.phone, message);
+        await wahaSendText(tenant.id, patient.phone, message);
 
-        // Atualiza data do último envio
         await prisma.patient.update({
           where: { id: patient.id },
           data: { postConsultSentAt: new Date() },
         });
 
-        // Registra no log
         await prisma.whatsAppLog.create({
           data: {
             tenantId: tenant.id,
@@ -89,9 +74,9 @@ export async function GET(req: Request) {
         });
 
         totalSent++;
-        console.log(`[pos-consulta] ✅ Enviado para ${patient.name} (tenant: ${tenant.id})`);
+        console.log(`[pos-consulta] ✅ ${patient.name} (tenant: ${tenant.id})`);
       } catch (e) {
-        console.error(`[pos-consulta] ❌ Erro ao enviar para ${patient.name}:`, e);
+        console.error(`[pos-consulta] ❌ Erro para ${patient.name}:`, e);
         await prisma.whatsAppLog.create({
           data: {
             tenantId: tenant.id,
