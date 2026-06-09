@@ -16,7 +16,13 @@ async function sendTemplateMessage(
   messageType: string
 ) {
   try {
-    await wahaSendText(tenantId, phone, message);
+    // Busca chatId real do WAHA para resolver LIDs e formatos não-padrão
+    const lastInboxMsg = await prisma.inboxMessage.findFirst({
+      where: { tenantId, phone, fromMe: false, chatId: { not: null } },
+      orderBy: { timestamp: "desc" },
+      select: { chatId: true },
+    });
+    await wahaSendText(tenantId, phone, message, lastInboxMsg?.chatId ?? undefined);
     await prisma.whatsAppLog.create({
       data: {
         tenantId,

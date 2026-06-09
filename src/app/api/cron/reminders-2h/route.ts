@@ -50,7 +50,13 @@ export async function GET(req: Request) {
     });
 
     try {
-      await wahaSendText(apt.tenantId, apt.patient.phone, message);
+      // Busca chatId real do WAHA para resolver LIDs e formatos não-padrão
+      const lastInboxMsg = await prisma.inboxMessage.findFirst({
+        where: { tenantId: apt.tenantId, phone: apt.patient.phone, fromMe: false, chatId: { not: null } },
+        orderBy: { timestamp: "desc" },
+        select: { chatId: true },
+      });
+      await wahaSendText(apt.tenantId, apt.patient.phone, message, lastInboxMsg?.chatId ?? undefined);
 
       await prisma.appointment.update({
         where: { id: apt.id },

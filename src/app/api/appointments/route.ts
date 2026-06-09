@@ -82,7 +82,14 @@ export async function POST(req: Request) {
             tipo_consulta: appointment.consultationType || "",
           });
 
-          await wahaSendText(tenantId, patient.phone, message);
+          // Busca chatId real do WAHA (resolve LIDs e formatos não-padrão)
+          const lastInboxMsg = await prisma.inboxMessage.findFirst({
+            where: { tenantId, phone: patient.phone, fromMe: false, chatId: { not: null } },
+            orderBy: { timestamp: "desc" },
+            select: { chatId: true },
+          });
+
+          await wahaSendText(tenantId, patient.phone, message, lastInboxMsg?.chatId ?? undefined);
           await prisma.appointment.update({
             where: { id: appointment.id },
             data: { confirmationSent: true },
