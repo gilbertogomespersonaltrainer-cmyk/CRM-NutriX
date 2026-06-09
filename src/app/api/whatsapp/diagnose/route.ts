@@ -6,11 +6,16 @@ import { wahaSessionName } from "@/lib/waha";
 const WAHA_URL = (process.env.WAHA_URL || "").replace(/\/$/, "");
 const WAHA_API_KEY = process.env.WAHA_API_KEY || "";
 
+function wahaHeaders() {
+  return { "Content-Type": "application/json", "X-Api-Key": WAHA_API_KEY };
+}
+
 export async function GET(req: Request) {
   try {
     const tenantId = await getTenantId();
     const { searchParams } = new URL(req.url);
     const patientName = searchParams.get("name") || "";
+    const doSend = searchParams.get("send") === "true";
     const session = wahaSessionName(tenantId);
 
     // Busca paciente pelo nome (parcial)
@@ -46,16 +51,62 @@ export async function GET(req: Request) {
       select: { chatId: true, timestamp: true },
     });
 
-    // Verifica se o número existe no WhatsApp via WAHA
-    let wahaCheck: Record<string, unknown> = {};
+    const chatIdToUse = lastInboxMsg?.chatId ?? constructedChatId;
+
+    // Verifica status da sessão WAHA
+    let sessionStatus: Record<string, unknown> = {};
     try {
-      const checkRes = await fetch(
-        `${WAHA_URL}/api/${session}/check-number-status?phone=${normalizedPhone}`,
-        { headers: { "X-Api-Key": WAHA_API_KEY }, signal: AbortSignal.timeout(5000) }
-      );
-      wahaCheck = await checkRes.json().catch(() => ({ status: checkRes.status }));
+      const sesRes = await fetch(`${WAHA_URL}/api/sessions/${session}`, {
+        headers: wahaHeaders(),
+        signal: AbortSignal.timeout(5000),
+      });
+      sessionStatus = await sesRes.json().catch(() => ({ httpStatus: sesRes.status }));
     } catch (e) {
-      wahaCheck = { error: String(e) };
+      sessionStatus = { error: String(e) };
+    }
+
+    // Tenta verificar se o número existe no WhatsApp (testa múltiplos endpoints WAHA)
+    let wahaCheck: Record<string, unknown> = {};
+    const checkPaths = [
+      `/api/${session}/contacts/check-exists?chatId=${constructedChatId}`,
+      `/api/contacts/check-exists`,
+    ];
+    for (const path of checkPaths) {
+      try {
+        const isPost = path.includes("contacts/check-exists") && !path.includes("?");
+        const checkRes = await fetch(`${WAHA_URL}${path}`, {
+          method: isPost ? "POST" : "GET",
+          headers: wahaHeaders(),
+          body: isPost ? JSON.stringify({ session, chatId: constructedChatId }) : undefined,
+          signal: AbortSignal.timeout(5000),
+        });
+        const body = await checkRes.json().catch(() => ({ httpStatus: checkRes.status }));
+        wahaCheck = { path, httpStatus: checkRes.status, body };
+        if (checkRes.ok) break; // Achou um endpoint que funciona
+      } catch (e) {
+        wahaCheck = { path, error: String(e) };
+      }
+    }
+
+    // Envia mensagem de teste real se ?send=true
+    let sendTestResult: Record<string, unknown> = {};
+    if (doSend) {
+      try {
+        const sendRes = await fetch(`${WAHA_URL}/api/sendText`, {
+          method: "POST",
+          headers: wahaHeaders(),
+          body: JSON.stringify({
+            session,
+            chatId: chatIdToUse,
+            text: "🔧 Teste técnico NutriX — pode ignorar esta mensagem.",
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+        const sendBody = await sendRes.json().catch(() => ({}));
+        sendTestResult = { httpStatus: sendRes.status, ok: sendRes.ok, body: sendBody };
+      } catch (e) {
+        sendTestResult = { error: String(e) };
+      }
     }
 
     // Últimas mensagens do inbox deste número
@@ -72,8 +123,10 @@ export async function GET(req: Request) {
       normalizedPhone,
       constructedChatId,
       inboxChatId: lastInboxMsg?.chatId ?? null,
-      chatIdToBeUsed: lastInboxMsg?.chatId ?? constructedChatId,
-      wahaNumberCheck: wahaCheck,
+      chatIdToBeUsed: chatIdToUse,
+      sessionStatus,
+      wahaCheck,
+      ...(doSend ? { sendTestResult } : { hint: "Adicione &send=true na URL para enviar mensagem de teste real" }),
       inboxHistory,
     });
   } catch (err) {
