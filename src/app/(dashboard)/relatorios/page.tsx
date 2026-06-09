@@ -270,7 +270,7 @@ export default function RelatoriosPage() {
           <span className="font-outfit text-2xl font-light text-black">Nutri</span>
           <span className="font-outfit text-2xl font-black text-[#16a34a]">X</span>
         </div>
-        <p className="text-sm text-gray-500">{reportTitles[reportType]} · Período: {formatDate(startDate)} até {formatDate(endDate)}</p>
+        <p className="text-sm text-gray-500">{reportTitles[reportType]}{startDate && endDate ? ` · Período: ${formatDate(startDate)} até ${formatDate(endDate)}` : ""}</p>
         <hr className="mt-3 border-gray-200" />
       </div>
 
