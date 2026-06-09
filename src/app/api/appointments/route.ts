@@ -91,6 +91,9 @@ export async function POST(req: Request) {
             select: { chatId: true },
           });
 
+          const usedChatId = lastInboxMsg?.chatId ?? `${normalizedPhone}@c.us`;
+          console.log(`[confirmation-send] phone="${patient.phone}" normalizedPhone="${normalizedPhone}" inboxChatId="${lastInboxMsg?.chatId ?? "NONE"}" usedChatId="${usedChatId}"`);
+
           await wahaSendText(tenantId, patient.phone, message, lastInboxMsg?.chatId ?? undefined);
           await prisma.appointment.update({
             where: { id: appointment.id },
