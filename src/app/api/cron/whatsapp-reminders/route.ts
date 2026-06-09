@@ -17,8 +17,10 @@ async function sendTemplateMessage(
 ) {
   try {
     // Busca chatId real do WAHA para resolver LIDs e formatos não-padrão
+    const phoneDigits = phone.replace(/\D/g, "");
+    const normalizedPhone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
     const lastInboxMsg = await prisma.inboxMessage.findFirst({
-      where: { tenantId, phone, fromMe: false, chatId: { not: null } },
+      where: { tenantId, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
       orderBy: { timestamp: "desc" },
       select: { chatId: true },
     });

@@ -83,8 +83,10 @@ export async function POST(req: Request) {
           });
 
           // Busca chatId real do WAHA (resolve LIDs e formatos não-padrão)
+          const phoneDigits = patient.phone.replace(/\D/g, "");
+          const normalizedPhone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
           const lastInboxMsg = await prisma.inboxMessage.findFirst({
-            where: { tenantId, phone: patient.phone, fromMe: false, chatId: { not: null } },
+            where: { tenantId, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
             orderBy: { timestamp: "desc" },
             select: { chatId: true },
           });
