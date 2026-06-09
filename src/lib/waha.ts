@@ -130,5 +130,11 @@ export async function wahaSendText(
     headers: wahaHeaders(),
     body: JSON.stringify({ session: name, chatId, text: message }),
   });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(`WAHA sendText falhou (${res.status}): ${JSON.stringify(errBody)}`);
+  }
+
   return res.json();
 }
