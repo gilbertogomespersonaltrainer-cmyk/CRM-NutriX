@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { StatCardIcon, GlassIcon } from "@/components/ui/premium-icon";
 import {
   Plus,
@@ -30,7 +31,12 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingDown,
+  Lock,
 } from "lucide-react";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type Payment = {
   id: string;
@@ -69,11 +75,256 @@ type Transaction = {
   date: string;
 };
 
+type ChartData = {
+  monthly: { month: string; receita: number; despesas: number }[];
+  byServiceType: Record<string, number>;
+  byMethod: Record<string, number>;
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function isProfessional(plan?: string): boolean {
+  if (!plan) return false;
+  return plan.toLowerCase().includes("professional");
+}
+
+function shortCurrency(v: number): string {
+  if (v >= 1000) return `R$${(v / 1000).toFixed(1)}k`;
+  return `R$${v.toFixed(0)}`;
+}
+
+const CHART_COLORS = ["#22c55e", "#16a34a", "#4ade80", "#6ee7b7", "#a7f3d0"];
+
+// ---------------------------------------------------------------------------
+// Chart: Evolução Mensal (Essential + Pro)
+// ---------------------------------------------------------------------------
+
+function MonthlyChart({
+  data,
+  isPro,
+}: {
+  data: ChartData["monthly"] | undefined;
+  isPro: boolean;
+}) {
+  if (!data) {
+    return (
+      <div className="flex items-end gap-2 h-[130px]">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+            <div
+              className="w-full bg-[#1a1a1a] rounded-t animate-pulse"
+              style={{ height: `${50 + i * 10}%` }}
+            />
+            <div className="h-2 w-5 bg-[#1a1a1a] rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const maxVal = Math.max(
+    ...data.flatMap((d) => (isPro ? [d.receita, d.despesas] : [d.receita])),
+    1
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-end gap-2 h-[130px]">
+        {data.map((d, i) => {
+          const rH = Math.max(
+            Math.round((d.receita / maxVal) * 100),
+            d.receita > 0 ? 3 : 0
+          );
+          const eH = isPro
+            ? Math.max(Math.round((d.despesas / maxVal) * 100), d.despesas > 0 ? 3 : 0)
+            : 0;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+              <div className="w-full flex items-end justify-center gap-0.5 flex-1">
+                <div
+                  className={cn(
+                    "rounded-t-sm bg-[#22c55e]/80 transition-all duration-500",
+                    isPro ? "flex-1" : "w-full"
+                  )}
+                  style={{ height: `${rH}%` }}
+                  title={`Receita: ${formatCurrency(d.receita)}`}
+                />
+                {isPro && (
+                  <div
+                    className="flex-1 rounded-t-sm bg-[#ef4444]/60 transition-all duration-500"
+                    style={{ height: `${eH}%` }}
+                    title={`Despesas: ${formatCurrency(d.despesas)}`}
+                  />
+                )}
+              </div>
+              <span className="text-[10px] text-[#555] capitalize">{d.month}</span>
+            </div>
+          );
+        })}
+      </div>
+      {isPro && (
+        <div className="flex items-center gap-5 justify-center pt-1">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm bg-[#22c55e]/80" />
+            <span className="text-[11px] text-[#666]">Receita</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm bg-[#ef4444]/60" />
+            <span className="text-[11px] text-[#666]">Despesas</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Chart: Donut por Tipo de Serviço (Professional)
+// ---------------------------------------------------------------------------
+
+function DonutChart({ data }: { data: Record<string, number> | undefined }) {
+  if (!data) {
+    return (
+      <div className="h-[130px] flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-[#22c55e] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const entries = Object.entries(data)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+
+  if (total === 0) {
+    return (
+      <p className="text-sm text-[#555] text-center py-8">Sem dados registrados</p>
+    );
+  }
+
+  const r = 52;
+  const circ = 2 * Math.PI * r;
+  let accumulated = 0;
+
+  return (
+    <div className="flex items-center gap-5">
+      <div className="flex-shrink-0">
+        <svg width={128} height={128} viewBox="0 0 128 128">
+          {/* Track */}
+          <circle cx={64} cy={64} r={r} fill="none" stroke="#1a1a1a" strokeWidth={20} />
+          {/* Segments */}
+          {entries.map(([name, value], i) => {
+            const pct = value / total;
+            const dash = pct * circ;
+            const dashOffset = circ / 4 - accumulated;
+            accumulated += dash;
+            return (
+              <circle
+                key={name}
+                cx={64}
+                cy={64}
+                r={r}
+                fill="none"
+                stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                strokeWidth={20}
+                strokeDasharray={`${dash} ${circ - dash}`}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          })}
+          {/* Center label */}
+          <text x={64} y={60} textAnchor="middle" fontSize={9} fill="#666">
+            Total
+          </text>
+          <text
+            x={64}
+            y={74}
+            textAnchor="middle"
+            fontSize={11}
+            fontWeight="600"
+            fill="#fff"
+          >
+            {shortCurrency(total)}
+          </text>
+        </svg>
+      </div>
+      <div className="space-y-2 flex-1 min-w-0">
+        {entries.map(([name, value], i) => (
+          <div key={name} className="flex items-center gap-2">
+            <div
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+            />
+            <span className="text-[11px] text-[#888] truncate flex-1">{name}</span>
+            <span className="text-[11px] font-semibold text-white">
+              {Math.round((value / total) * 100)}%
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Chart: Barras Horizontais por Forma de Pagamento (Professional)
+// ---------------------------------------------------------------------------
+
+function HorizontalBars({ data }: { data: Record<string, number> | undefined }) {
+  if (!data) {
+    return (
+      <div className="h-[130px] flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-[#22c55e] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+  const max = entries[0]?.[1] || 1;
+
+  if (entries.length === 0) {
+    return (
+      <p className="text-sm text-[#555] text-center py-8">Sem dados registrados</p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {entries.map(([name, value]) => (
+        <div key={name} className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-[#888]">{name}</span>
+            <span className="text-[11px] font-semibold text-white">
+              {formatCurrency(value)}
+            </span>
+          </div>
+          <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#22c55e]/70 rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((value / max) * 100)}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export default function FinanceiroPage() {
+  const { data: session } = useSession();
+  const isPro = isProfessional(session?.user?.subscriptionPlan);
+
   const [payments, setPayments] = useState<Payment[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"payments" | "expenses" | "overdue">("payments");
   const [showNewPayment, setShowNewPayment] = useState(false);
@@ -112,6 +363,14 @@ export default function FinanceiroPage() {
     setTransactions(await tRes.json());
     setLoading(false);
   }, [currentMonth]);
+
+  // Chart data: fetch once, independent of currentMonth
+  useEffect(() => {
+    fetch("/api/financeiro/charts")
+      .then((r) => r.json())
+      .then((d) => setChartData(d))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -157,6 +416,11 @@ export default function FinanceiroPage() {
           notes: "",
         });
         fetchData();
+        // Refresh chart data too
+        fetch("/api/financeiro/charts")
+          .then((r) => r.json())
+          .then(setChartData)
+          .catch(() => {});
       }
     } finally {
       setSaving(false);
@@ -186,6 +450,10 @@ export default function FinanceiroPage() {
           date: new Date().toISOString().split("T")[0],
         });
         fetchData();
+        fetch("/api/financeiro/charts")
+          .then((r) => r.json())
+          .then(setChartData)
+          .catch(() => {});
       }
     } finally {
       setSaving(false);
@@ -214,11 +482,16 @@ export default function FinanceiroPage() {
   const overdueInstallments = payments.flatMap((p) =>
     p.installments
       .filter((i) => i.status === "PENDING" && new Date(i.dueDate) < new Date())
-      .map((i) => ({ ...i, patientName: p.patient.name, serviceType: p.serviceType.name }))
+      .map((i) => ({
+        ...i,
+        patientName: p.patient.name,
+        serviceType: p.serviceType.name,
+      }))
   );
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-outfit text-2xl font-bold text-white">Financeiro</h1>
@@ -238,26 +511,37 @@ export default function FinanceiroPage() {
 
       {/* Month Navigation */}
       <div className="flex items-center gap-2">
-        <Button variant="secondary" size="icon" onClick={() => {
-          const d = new Date(currentMonth);
-          d.setMonth(d.getMonth() - 1);
-          setCurrentMonth(d);
-        }}>
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={() => {
+            const d = new Date(currentMonth);
+            d.setMonth(d.getMonth() - 1);
+            setCurrentMonth(d);
+          }}
+        >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-sm font-medium text-white min-w-[160px] text-center capitalize">
-          {currentMonth.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+          {currentMonth.toLocaleDateString("pt-BR", {
+            month: "long",
+            year: "numeric",
+          })}
         </span>
-        <Button variant="secondary" size="icon" onClick={() => {
-          const d = new Date(currentMonth);
-          d.setMonth(d.getMonth() + 1);
-          setCurrentMonth(d);
-        }}>
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={() => {
+            const d = new Date(currentMonth);
+            d.setMonth(d.getMonth() + 1);
+            setCurrentMonth(d);
+          }}
+        >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Summary */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-5">
@@ -294,12 +578,111 @@ export default function FinanceiroPage() {
         </Card>
       </div>
 
-      {/* Tabs */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Charts Section                                                       */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold text-[#555] uppercase tracking-wider">
+            Visão Financeira
+          </h2>
+        </div>
+
+        {/* Monthly bar chart — Essential + Professional */}
+        <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl p-5">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Evolução dos Últimos 6 Meses
+              </p>
+              <p className="text-xs text-[#555] mt-0.5">
+                {isPro ? "Receita e despesas por mês" : "Receita mensal"}
+              </p>
+            </div>
+            {!isPro && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#22c55e]/10 text-[#4ade80] border border-[#22c55e]/20 flex-shrink-0">
+                Essential
+              </span>
+            )}
+          </div>
+          <MonthlyChart data={chartData?.monthly} isPro={isPro} />
+        </div>
+
+        {/* Detailed charts — Professional only */}
+        <div className="relative">
+          {/* Charts (blurred when not Pro) */}
+          <div
+            className={cn(
+              "grid grid-cols-1 md:grid-cols-2 gap-4",
+              !isPro && "blur-sm opacity-40 pointer-events-none select-none"
+            )}
+          >
+            <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl p-5">
+              <p className="text-sm font-semibold text-white mb-4">
+                Receita por Tipo de Serviço
+              </p>
+              <DonutChart data={chartData?.byServiceType} />
+            </div>
+            <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl p-5">
+              <p className="text-sm font-semibold text-white mb-4">
+                Receita por Forma de Pagamento
+              </p>
+              <HorizontalBars data={chartData?.byMethod} />
+            </div>
+          </div>
+
+          {/* Lock overlay */}
+          {!isPro && (
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div className="bg-[#111]/95 border border-[#1e1e1e] rounded-xl px-8 py-5 flex flex-col items-center gap-3 shadow-2xl">
+                <div className="w-9 h-9 rounded-full bg-[#1a1a1a] flex items-center justify-center">
+                  <Lock className="h-4 w-4 text-[#555]" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-white">
+                    Disponível no Professional
+                  </p>
+                  <p className="text-xs text-[#666] mt-1">
+                    Gráficos detalhados por serviço e forma de pagamento
+                  </p>
+                </div>
+                <a
+                  href="https://pay.hotmart.com/H105769412F?off=6rficksd"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 px-5 py-1.5 rounded-lg bg-[#22c55e] text-black text-xs font-bold hover:bg-[#16a34a] transition-colors"
+                >
+                  Fazer upgrade
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Tabs                                                                */}
+      {/* ------------------------------------------------------------------ */}
       <div className="flex gap-1 border-b border-[#1e1e1e]">
         {[
-          { key: "payments" as const, label: "Pagamentos", filledIcon: "receipt" as const, variant: "green" as const },
-          { key: "expenses" as const, label: "Despesas", filledIcon: "trendingDown" as const, variant: "red" as const },
-          { key: "overdue" as const, label: `Inadimplentes (${overdueInstallments.length})`, filledIcon: "alert" as const, variant: "amber" as const },
+          {
+            key: "payments" as const,
+            label: "Pagamentos",
+            filledIcon: "receipt" as const,
+            variant: "green" as const,
+          },
+          {
+            key: "expenses" as const,
+            label: "Despesas",
+            filledIcon: "trendingDown" as const,
+            variant: "red" as const,
+          },
+          {
+            key: "overdue" as const,
+            label: `Inadimplentes (${overdueInstallments.length})`,
+            filledIcon: "alert" as const,
+            variant: "amber" as const,
+          },
         ].map((t) => (
           <button
             key={t.key}
@@ -310,7 +693,12 @@ export default function FinanceiroPage() {
                 : "border-transparent text-[#666] hover:text-white"
             }`}
           >
-            <GlassIcon icon={t.filledIcon} variant={tab === t.key ? t.variant : "green"} size="sm" className={tab !== t.key ? "opacity-40" : ""} />
+            <GlassIcon
+              icon={t.filledIcon}
+              variant={tab === t.key ? t.variant : "green"}
+              size="sm"
+              className={tab !== t.key ? "opacity-40" : ""}
+            />
             {t.label}
           </button>
         ))}
@@ -325,15 +713,23 @@ export default function FinanceiroPage() {
           {tab === "payments" && (
             <div className="space-y-2">
               {payments.length === 0 ? (
-                <p className="text-sm text-[#666] text-center py-8">Nenhum pagamento registrado</p>
+                <p className="text-sm text-[#666] text-center py-8">
+                  Nenhum pagamento registrado
+                </p>
               ) : (
                 payments.map((p) => (
-                  <div key={p.id} className="px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]">
+                  <div
+                    key={p.id}
+                    className="px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]"
+                  >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-white">{p.patient.name}</p>
+                        <p className="text-sm font-medium text-white">
+                          {p.patient.name}
+                        </p>
                         <p className="text-xs text-[#666]">
-                          {p.serviceType.name} · {p.paymentMethod} · {formatDate(p.createdAt)}
+                          {p.serviceType.name} · {p.paymentMethod} ·{" "}
+                          {formatDate(p.createdAt)}
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
@@ -341,24 +737,49 @@ export default function FinanceiroPage() {
                           {formatCurrency(p.finalAmount)}
                         </span>
                         <Badge
-                          variant={p.status === "PAID" ? "paid" : p.status === "PENDING" ? "pending" : "overdue"}
+                          variant={
+                            p.status === "PAID"
+                              ? "paid"
+                              : p.status === "PENDING"
+                              ? "pending"
+                              : "overdue"
+                          }
                         >
-                          {p.status === "PAID" ? "Pago" : p.status === "PENDING" ? "Pendente" : "Parcial"}
+                          {p.status === "PAID"
+                            ? "Pago"
+                            : p.status === "PENDING"
+                            ? "Pendente"
+                            : "Parcial"}
                         </Badge>
                       </div>
                     </div>
                     {p.installments.length > 0 && (
                       <div className="mt-3 space-y-1.5 border-t border-[#1e1e1e] pt-3">
                         {p.installments.map((inst) => (
-                          <div key={inst.id} className="flex items-center justify-between text-xs">
+                          <div
+                            key={inst.id}
+                            className="flex items-center justify-between text-xs"
+                          >
                             <span className="text-[#a1a1a1]">
-                              Parcela {inst.installmentNumber} · {formatDate(inst.dueDate)} · {formatCurrency(inst.amount)}
+                              Parcela {inst.installmentNumber} ·{" "}
+                              {formatDate(inst.dueDate)} ·{" "}
+                              {formatCurrency(inst.amount)}
                             </span>
                             <div className="flex items-center gap-2">
                               <Badge
-                                variant={inst.status === "PAID" ? "paid" : new Date(inst.dueDate) < new Date() ? "overdue" : "pending"}
+                                variant={
+                                  inst.status === "PAID"
+                                    ? "paid"
+                                    : new Date(inst.dueDate) < new Date()
+                                    ? "overdue"
+                                    : "pending"
+                                }
                               >
-                                {inst.status === "PAID" ? "Paga" : new Date(inst.dueDate) < new Date() ? "Atrasada" : "Pendente"}
+                                {inst.status === "PAID"
+                                  ? "Paga"
+                                  : new Date(inst.dueDate) < new Date()
+                                  ? "Atrasada"
+                                  : "Pendente"}
                               </Badge>
                               {inst.status !== "PAID" && (
                                 <Button
@@ -384,12 +805,17 @@ export default function FinanceiroPage() {
           {tab === "expenses" && (
             <div className="space-y-2">
               {transactions.filter((t) => t.type === "EXPENSE").length === 0 ? (
-                <p className="text-sm text-[#666] text-center py-8">Nenhuma despesa registrada</p>
+                <p className="text-sm text-[#666] text-center py-8">
+                  Nenhuma despesa registrada
+                </p>
               ) : (
                 transactions
                   .filter((t) => t.type === "EXPENSE")
                   .map((t) => (
-                    <div key={t.id} className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]">
+                    <div
+                      key={t.id}
+                      className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]"
+                    >
                       <div>
                         <p className="text-sm text-white">{t.description}</p>
                         <p className="text-xs text-[#666]">{formatDate(t.date)}</p>
@@ -406,14 +832,22 @@ export default function FinanceiroPage() {
           {tab === "overdue" && (
             <div className="space-y-2">
               {overdueInstallments.length === 0 ? (
-                <p className="text-sm text-[#666] text-center py-8">Nenhuma parcela em atraso</p>
+                <p className="text-sm text-[#666] text-center py-8">
+                  Nenhuma parcela em atraso
+                </p>
               ) : (
                 overdueInstallments.map((inst) => (
-                  <div key={inst.id} className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#ef4444]/20">
+                  <div
+                    key={inst.id}
+                    className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#ef4444]/20"
+                  >
                     <div>
-                      <p className="text-sm font-medium text-white">{inst.patientName}</p>
+                      <p className="text-sm font-medium text-white">
+                        {inst.patientName}
+                      </p>
                       <p className="text-xs text-[#666]">
-                        {inst.serviceType} · Parcela {inst.installmentNumber} · Vencimento: {formatDate(inst.dueDate)}
+                        {inst.serviceType} · Parcela {inst.installmentNumber} ·
+                        Vencimento: {formatDate(inst.dueDate)}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -436,7 +870,9 @@ export default function FinanceiroPage() {
         </>
       )}
 
-      {/* New Payment Dialog */}
+      {/* ------------------------------------------------------------------ */}
+      {/* New Payment Dialog                                                  */}
+      {/* ------------------------------------------------------------------ */}
       <Dialog open={showNewPayment} onOpenChange={setShowNewPayment}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -447,23 +883,39 @@ export default function FinanceiroPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Paciente *</Label>
-                <Select value={payForm.patientId} onValueChange={(v) => setPayForm((p) => ({ ...p, patientId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <Select
+                  value={payForm.patientId}
+                  onValueChange={(v) => setPayForm((p) => ({ ...p, patientId: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
                   <SelectContent>
                     {patients.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Tipo de Serviço *</Label>
-                <Select value={payForm.serviceTypeId} onValueChange={onServiceTypeChange}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <Select
+                  value={payForm.serviceTypeId}
+                  onValueChange={onServiceTypeChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {serviceTypes.filter((s) => s.isActive).map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name} - {formatCurrency(s.defaultPrice)}</SelectItem>
-                    ))}
+                    {serviceTypes
+                      .filter((s) => s.isActive)
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} - {formatCurrency(s.defaultPrice)}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -471,11 +923,26 @@ export default function FinanceiroPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Valor Total *</Label>
-                <Input type="number" step="0.01" value={payForm.totalAmount} onChange={(e) => setPayForm((p) => ({ ...p, totalAmount: e.target.value }))} required />
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={payForm.totalAmount}
+                  onChange={(e) =>
+                    setPayForm((p) => ({ ...p, totalAmount: e.target.value }))
+                  }
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label>Desconto</Label>
-                <Input type="number" step="0.01" value={payForm.discountAmount} onChange={(e) => setPayForm((p) => ({ ...p, discountAmount: e.target.value }))} />
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={payForm.discountAmount}
+                  onChange={(e) =>
+                    setPayForm((p) => ({ ...p, discountAmount: e.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-2">
                 <Label>Valor Final</Label>
@@ -483,7 +950,7 @@ export default function FinanceiroPage() {
                   readOnly
                   value={formatCurrency(
                     (parseFloat(payForm.totalAmount) || 0) -
-                    (parseFloat(payForm.discountAmount) || 0)
+                      (parseFloat(payForm.discountAmount) || 0)
                   )}
                   className="bg-[#111]"
                 />
@@ -492,8 +959,13 @@ export default function FinanceiroPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Modalidade</Label>
-                <Select value={payForm.modality} onValueChange={(v) => setPayForm((p) => ({ ...p, modality: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={payForm.modality}
+                  onValueChange={(v) => setPayForm((p) => ({ ...p, modality: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="AVISTA">À Vista</SelectItem>
                     <SelectItem value="PARCELADO">Parcelado</SelectItem>
@@ -503,13 +975,28 @@ export default function FinanceiroPage() {
               {payForm.modality === "PARCELADO" && (
                 <div className="space-y-2">
                   <Label>Parcelas</Label>
-                  <Input type="number" min="2" max="24" value={payForm.installmentCount} onChange={(e) => setPayForm((p) => ({ ...p, installmentCount: e.target.value }))} />
+                  <Input
+                    type="number"
+                    min="2"
+                    max="24"
+                    value={payForm.installmentCount}
+                    onChange={(e) =>
+                      setPayForm((p) => ({ ...p, installmentCount: e.target.value }))
+                    }
+                  />
                 </div>
               )}
               <div className="space-y-2">
                 <Label>Forma de Pagamento</Label>
-                <Select value={payForm.paymentMethod} onValueChange={(v) => setPayForm((p) => ({ ...p, paymentMethod: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={payForm.paymentMethod}
+                  onValueChange={(v) =>
+                    setPayForm((p) => ({ ...p, paymentMethod: v }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="PIX">Pix</SelectItem>
                     <SelectItem value="CREDIT_CARD">Cartão de Crédito</SelectItem>
@@ -522,19 +1009,34 @@ export default function FinanceiroPage() {
             </div>
             <div className="space-y-2">
               <Label>Observações</Label>
-              <Textarea value={payForm.notes} onChange={(e) => setPayForm((p) => ({ ...p, notes: e.target.value }))} />
+              <Textarea
+                value={payForm.notes}
+                onChange={(e) => setPayForm((p) => ({ ...p, notes: e.target.value }))}
+              />
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="secondary" onClick={() => setShowNewPayment(false)}>Cancelar</Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowNewPayment(false)}
+              >
+                Cancelar
+              </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Registrar"}
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Registrar"
+                )}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* New Expense Dialog */}
+      {/* ------------------------------------------------------------------ */}
+      {/* New Expense Dialog                                                  */}
+      {/* ------------------------------------------------------------------ */}
       <Dialog open={showNewExpense} onOpenChange={setShowNewExpense}>
         <DialogContent>
           <DialogHeader>
@@ -544,22 +1046,54 @@ export default function FinanceiroPage() {
           <form onSubmit={handleExpense} className="space-y-4">
             <div className="space-y-2">
               <Label>Descrição *</Label>
-              <Input value={expenseForm.description} onChange={(e) => setExpenseForm((p) => ({ ...p, description: e.target.value }))} required placeholder="Aluguel, materiais, etc." />
+              <Input
+                value={expenseForm.description}
+                onChange={(e) =>
+                  setExpenseForm((p) => ({ ...p, description: e.target.value }))
+                }
+                required
+                placeholder="Aluguel, materiais, etc."
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor *</Label>
-                <Input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => setExpenseForm((p) => ({ ...p, amount: e.target.value }))} required />
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={expenseForm.amount}
+                  onChange={(e) =>
+                    setExpenseForm((p) => ({ ...p, amount: e.target.value }))
+                  }
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label>Data *</Label>
-                <Input type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((p) => ({ ...p, date: e.target.value }))} required />
+                <Input
+                  type="date"
+                  value={expenseForm.date}
+                  onChange={(e) =>
+                    setExpenseForm((p) => ({ ...p, date: e.target.value }))
+                  }
+                  required
+                />
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="secondary" onClick={() => setShowNewExpense(false)}>Cancelar</Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowNewExpense(false)}
+              >
+                Cancelar
+              </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Registrar"}
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Registrar"
+                )}
               </Button>
             </div>
           </form>

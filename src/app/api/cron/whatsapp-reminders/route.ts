@@ -138,51 +138,6 @@ async function sendReminders24h() {
   return sent;
 }
 
-// Lembrete 2h antes da consulta
-async function sendReminders2h() {
-  const now = new Date();
-  const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-  const threeHoursFromNow = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      scheduledAt: { gte: twoHoursFromNow, lt: threeHoursFromNow },
-      status: "SCHEDULED",
-      reminder2hSent: false,
-    },
-    include: {
-      patient: { select: { id: true, name: true, phone: true } },
-      tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true } },
-    },
-  });
-
-  let sent = 0;
-  for (const apt of appointments) {
-    if (apt.tenant.whatsappStatus !== "CONNECTED") continue;
-
-    const template = await prisma.messageTemplate.findUnique({
-      where: { tenantId_type: { tenantId: apt.tenantId, type: "REMINDER_2H" } },
-    });
-    if (!template) continue;
-
-    const scheduledDate = new Date(apt.scheduledAt);
-    const message = replaceTemplateVars(template.content, {
-      nome_paciente: apt.patient.name,
-      nome_nutricionista: apt.tenant.name,
-      nome_clinica: apt.tenant.clinicName || "",
-      data_consulta: formatDateBR(scheduledDate),
-      hora_consulta: formatTimeBR(scheduledDate),
-    });
-
-    const ok = await sendTemplateMessage(apt.tenantId, apt.patient.id, apt.patient.phone, message, "REMINDER_2H");
-    if (ok) {
-      await prisma.appointment.update({ where: { id: apt.id }, data: { reminder2hSent: true } });
-      sent++;
-    }
-  }
-  return sent;
-}
-
 // Mensagem pós-consulta (3 dias depois de consulta COMPLETED)
 async function sendPostConsultation() {
   const threeDaysAgo = new Date();
@@ -334,11 +289,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [reminders8d, reminders24h, reminders2h, postConsult, birthdays, reactivations] =
+    const [reminders8d, reminders24h, postConsult, birthdays, reactivations] =
       await Promise.all([
         sendReminders8d(),
         sendReminders24h(),
-        sendReminders2h(),
         sendPostConsultation(),
         sendBirthday(),
         sendReactivation(),
@@ -347,7 +301,6 @@ export async function GET(req: Request) {
     return NextResponse.json({
       reminders8d,
       reminders24h,
-      reminders2h,
       postConsult,
       birthdays,
       reactivations,

@@ -255,8 +255,8 @@ export default function MensagensPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-outfit text-2xl font-bold text-white">Mensagens em Massa</h1>
-        <p className="text-sm text-[#666] mt-1">Envie mensagens para múltiplos pacientes via WhatsApp</p>
+        <h1 className="font-outfit text-2xl font-bold text-white">Mensagens</h1>
+        <p className="text-sm text-[#666] mt-1">Envie mensagens para seus pacientes via WhatsApp</p>
       </div>
 
       {/* Templates Panel */}

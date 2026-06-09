@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { sendTextMessage } from "@/lib/whatsapp";
+import { wahaSendText } from "@/lib/waha";
+
+const DELAY_MS = 1500; // 1.5s entre cada mensagem para evitar banimento
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function POST(req: Request) {
   try {
@@ -30,41 +36,47 @@ export async function POST(req: Request) {
     let sent = 0;
     let failed = 0;
 
-    await Promise.allSettled(
-      patients.map(async (patient) => {
-        const personalizedMessage = message.replace(/\{nome_paciente\}/g, patient.name);
-        try {
-          await sendTextMessage(tenantId, patient.phone, personalizedMessage);
-          await prisma.whatsAppLog.create({
-            data: {
-              tenantId,
-              patientId: patient.id,
-              messageType: "BROADCAST",
-              phoneNumber: patient.phone,
-              messageText: personalizedMessage,
-              status: "SENT",
-            },
-          });
-          sent++;
-        } catch (err) {
-          await prisma.whatsAppLog.create({
-            data: {
-              tenantId,
-              patientId: patient.id,
-              messageType: "BROADCAST",
-              phoneNumber: patient.phone,
-              messageText: personalizedMessage,
-              status: "FAILED",
-              errorMessage: err instanceof Error ? err.message : "Erro desconhecido",
-            },
-          });
-          failed++;
-        }
-      })
-    );
+    // Envio sequencial com delay — evita comportamento de disparo em massa
+    for (let i = 0; i < patients.length; i++) {
+      const patient = patients[i];
+      const personalizedMessage = message.replace(/\{nome_paciente\}/g, patient.name.split(" ")[0]);
+
+      try {
+        await wahaSendText(tenantId, patient.phone, personalizedMessage);
+        await prisma.whatsAppLog.create({
+          data: {
+            tenantId,
+            patientId: patient.id,
+            messageType: "BROADCAST",
+            phoneNumber: patient.phone,
+            messageText: personalizedMessage,
+            status: "SENT",
+          },
+        });
+        sent++;
+      } catch (err) {
+        await prisma.whatsAppLog.create({
+          data: {
+            tenantId,
+            patientId: patient.id,
+            messageType: "BROADCAST",
+            phoneNumber: patient.phone,
+            messageText: personalizedMessage,
+            status: "FAILED",
+            errorMessage: err instanceof Error ? err.message : "Erro desconhecido",
+          },
+        });
+        failed++;
+      }
+
+      // Aguarda entre mensagens (exceto após a última)
+      if (i < patients.length - 1) {
+        await sleep(DELAY_MS);
+      }
+    }
 
     return NextResponse.json({ sent, failed });
   } catch {
-    return NextResponse.json({ error: "Erro ao realizar envio em massa" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao enviar mensagens" }, { status: 500 });
   }
 }

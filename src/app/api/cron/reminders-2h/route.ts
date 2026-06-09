@@ -1,0 +1,93 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { wahaSendText } from "@/lib/waha";
+import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
+
+export async function GET(req: Request) {
+  const secret =
+    req.headers.get("authorization")?.replace("Bearer ", "") ??
+    req.headers.get("x-cron-secret") ??
+    new URL(req.url).searchParams.get("secret");
+
+  if (secret !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const now = new Date();
+  const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  const threeHoursFromNow = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      scheduledAt: { gte: twoHoursFromNow, lt: threeHoursFromNow },
+      status: "SCHEDULED",
+      reminder2hSent: false,
+    },
+    include: {
+      patient: { select: { id: true, name: true, phone: true } },
+      tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true } },
+    },
+  });
+
+  let sent = 0;
+  let errors = 0;
+
+  for (const apt of appointments) {
+    if (apt.tenant.whatsappStatus !== "CONNECTED") continue;
+
+    const template = await prisma.messageTemplate.findUnique({
+      where: { tenantId_type: { tenantId: apt.tenantId, type: "REMINDER_2H" } },
+    });
+    if (!template) continue;
+
+    const scheduledDate = new Date(apt.scheduledAt);
+    const message = replaceTemplateVars(template.content, {
+      nome_paciente: apt.patient.name,
+      nome_nutricionista: apt.tenant.name,
+      nome_clinica: apt.tenant.clinicName || "",
+      data_consulta: formatDateBR(scheduledDate),
+      hora_consulta: formatTimeBR(scheduledDate),
+    });
+
+    try {
+      await wahaSendText(apt.tenantId, apt.patient.phone, message);
+
+      await prisma.appointment.update({
+        where: { id: apt.id },
+        data: { reminder2hSent: true },
+      });
+
+      await prisma.whatsAppLog.create({
+        data: {
+          tenantId: apt.tenantId,
+          patientId: apt.patient.id,
+          messageType: "REMINDER_2H",
+          phoneNumber: apt.patient.phone,
+          messageText: message,
+          status: "SENT",
+        },
+      });
+
+      sent++;
+      console.log(`[reminders-2h] ✅ ${apt.patient.name} — ${formatTimeBR(scheduledDate)} (tenant: ${apt.tenantId})`);
+    } catch (e) {
+      errors++;
+      console.error(`[reminders-2h] ❌ Erro para ${apt.patient.name}:`, e);
+
+      await prisma.whatsAppLog.create({
+        data: {
+          tenantId: apt.tenantId,
+          patientId: apt.patient.id,
+          messageType: "REMINDER_2H",
+          phoneNumber: apt.patient.phone,
+          messageText: message,
+          status: "FAILED",
+          errorMessage: e instanceof Error ? e.message : String(e),
+        },
+      });
+    }
+  }
+
+  console.log(`[reminders-2h] Concluído — Enviados: ${sent}, Erros: ${errors}`);
+  return NextResponse.json({ sent, errors });
+}
