@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Search, Send, MessageCircle, User, Loader2, CheckCheck } from "lucide-react";
+import { Search, Send, MessageCircle, User, Loader2, CheckCheck, Link2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +100,11 @@ export default function InboxPage() {
   const [search, setSearch] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Modal de vincular contato LID a paciente
+  const [linkModal, setLinkModal] = useState(false);
+  const [linkSearch, setLinkSearch] = useState("");
+  const [linkPatients, setLinkPatients] = useState<{id:string;name:string;phone:string}[]>([]);
+  const [linking, setLinking] = useState(false);
   // controla se é o primeiro carregamento (mostra spinner) ou refresh silencioso
   const initialConvsLoad = useRef(true);
   const initialMsgsLoad = useRef<string | null>(null); // phone da conversa carregando pela 1ª vez
@@ -206,6 +211,40 @@ export default function InboxPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  }
+
+  // Busca pacientes para o modal de vinculação
+  useEffect(() => {
+    if (!linkModal) return;
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/patients?search=${encodeURIComponent(linkSearch)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : [];
+          setLinkPatients(list.slice(0, 20));
+        }
+      } catch { /* ignore */ }
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [linkSearch, linkModal]);
+
+  async function handleLinkPatient(patientId: string) {
+    if (!selectedPhone || linking) return;
+    setLinking(true);
+    try {
+      const res = await fetch("/api/inbox/link-patient", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: selectedPhone, patientId }),
+      });
+      if (res.ok) {
+        setLinkModal(false);
+        await fetchConversations();
+      }
+    } catch { /* ignore */ } finally {
+      setLinking(false);
     }
   }
 
@@ -340,6 +379,17 @@ export default function InboxPage() {
                 Ver paciente
               </Link>
             )}
+            {/* Botão visível para contatos LID sem paciente identificado */}
+            {isLidNumber(selectedConv.phone) && (
+              <button
+                onClick={() => { setLinkModal(true); setLinkSearch(""); setLinkPatients([]); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+                title="Vincular este contato a um paciente cadastrado"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                Vincular paciente
+              </button>
+            )}
             {selectedConv.patientStage && (
               <span className={cn(
                 "text-[11px] px-2 py-1 rounded border",
@@ -453,6 +503,57 @@ export default function InboxPage() {
           <p className="text-sm text-[#444] max-w-xs">
             Escolha uma conversa à esquerda para ver as mensagens e responder
           </p>
+        </div>
+      )}
+
+      {/* ─── Modal: Vincular contato LID a paciente ─── */}
+      {linkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h2 className="text-base font-semibold text-white mb-1">Vincular ao paciente</h2>
+            <p className="text-xs text-[#555] mb-4">
+              Selecione o paciente correspondente a este contato WhatsApp. As mensagens serão vinculadas e os envios futuros usarão o canal correto.
+            </p>
+            <input
+              type="text"
+              placeholder="Buscar paciente pelo nome..."
+              value={linkSearch}
+              onChange={e => setLinkSearch(e.target.value)}
+              autoFocus
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#22c55e]/40 mb-3"
+            />
+            <div className="space-y-1 max-h-52 overflow-y-auto">
+              {linkPatients.length === 0 && linkSearch && (
+                <p className="text-xs text-[#555] text-center py-4">Nenhum paciente encontrado</p>
+              )}
+              {linkPatients.length === 0 && !linkSearch && (
+                <p className="text-xs text-[#555] text-center py-4">Digite o nome do paciente</p>
+              )}
+              {linkPatients.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => handleLinkPatient(p.id)}
+                  disabled={linking}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#1a1a1a] hover:bg-[#22c55e]/10 border border-transparent hover:border-[#22c55e]/20 text-left transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center text-[#4ade80] font-bold text-xs flex-shrink-0">
+                    {p.name[0]?.toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white font-medium truncate">{p.name}</p>
+                    <p className="text-xs text-[#555] truncate">{p.phone}</p>
+                  </div>
+                  {linking && <Loader2 className="h-3.5 w-3.5 text-[#555] animate-spin flex-shrink-0" />}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setLinkModal(false)}
+              className="mt-4 w-full py-2 rounded-lg border border-[#2a2a2a] text-[#555] text-sm hover:border-[#333] hover:text-[#888] transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
     </div>
