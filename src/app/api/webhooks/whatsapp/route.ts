@@ -72,12 +72,29 @@ export async function POST(req: Request) {
           : phoneDigits;
 
         // Verifica se já existe um paciente com esse número (últimos 10 dígitos)
-        const existing = await prisma.patient.findFirst({
+        let existing = await prisma.patient.findFirst({
           where: {
             tenantId: tenant.id,
             phone: { contains: phone.slice(-10) },
           },
         });
+
+        // Para contas LID (@lid), o "phone" é o LID numérico — não bate com o telefone real.
+        // Tenta encontrar o paciente pelo whatsappChatId salvo anteriormente.
+        if (!existing && rawChatId) {
+          existing = await prisma.patient.findFirst({
+            where: { tenantId: tenant.id, whatsappChatId: rawChatId },
+          });
+        }
+
+        // Se encontrou paciente e a mensagem é dele (não enviada por mim),
+        // atualiza o whatsappChatId para garantir que envios futuros usem o JID correto.
+        if (existing && !fromMe && rawChatId) {
+          await prisma.patient.update({
+            where: { id: existing.id },
+            data: { whatsappChatId: rawChatId },
+          });
+        }
 
         let patientId: string | null = existing?.id ?? null;
 
@@ -88,6 +105,7 @@ export async function POST(req: Request) {
               tenantId: tenant.id,
               name: contactName ?? `Contato ${phone}`,
               phone,
+              whatsappChatId: rawChatId, // salva JID desde a criação
               stage: "LEAD",
               isActive: true,
             },

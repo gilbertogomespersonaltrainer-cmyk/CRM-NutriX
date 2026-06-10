@@ -82,19 +82,26 @@ export async function POST(req: Request) {
             tipo_consulta: appointment.consultationType || "",
           });
 
-          // Busca chatId real do WAHA (resolve LIDs e formatos não-padrão)
+          // Prioridade: 1) whatsappChatId salvo no paciente (cobre LIDs)
+          //             2) último chatId do inbox (fallback)
+          //             3) constrói a partir do telefone
+          const patientFull = await prisma.patient.findUnique({
+            where: { id: patient.id },
+            select: { whatsappChatId: true },
+          });
           const phoneDigits = patient.phone.replace(/\D/g, "");
           const normalizedPhone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
-          const lastInboxMsg = await prisma.inboxMessage.findFirst({
-            where: { tenantId, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
-            orderBy: { timestamp: "desc" },
-            select: { chatId: true },
-          });
+          let resolvedChatId: string | undefined = patientFull?.whatsappChatId ?? undefined;
+          if (!resolvedChatId) {
+            const lastInboxMsg = await prisma.inboxMessage.findFirst({
+              where: { tenantId, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
+              orderBy: { timestamp: "desc" },
+              select: { chatId: true },
+            });
+            resolvedChatId = lastInboxMsg?.chatId ?? undefined;
+          }
 
-          const usedChatId = lastInboxMsg?.chatId ?? `${normalizedPhone}@c.us`;
-          console.log(`[confirmation-send] phone="${patient.phone}" normalizedPhone="${normalizedPhone}" inboxChatId="${lastInboxMsg?.chatId ?? "NONE"}" usedChatId="${usedChatId}"`);
-
-          await wahaSendText(tenantId, patient.phone, message, lastInboxMsg?.chatId ?? undefined);
+          await wahaSendText(tenantId, patient.phone, message, resolvedChatId);
           await prisma.appointment.update({
             where: { id: appointment.id },
             data: { confirmationSent: true },

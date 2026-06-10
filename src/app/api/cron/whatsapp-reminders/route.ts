@@ -16,15 +16,25 @@ async function sendTemplateMessage(
   messageType: string
 ) {
   try {
-    // Busca chatId real do WAHA para resolver LIDs e formatos não-padrão
-    const phoneDigits = phone.replace(/\D/g, "");
-    const normalizedPhone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
-    const lastInboxMsg = await prisma.inboxMessage.findFirst({
-      where: { tenantId, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
-      orderBy: { timestamp: "desc" },
-      select: { chatId: true },
+    // Prioridade: 1) whatsappChatId salvo no paciente (cobre LIDs)
+    //             2) último chatId do inbox (fallback)
+    //             3) constrói a partir do telefone
+    const patientRecord = await prisma.patient.findUnique({
+      where: { id: patientId },
+      select: { whatsappChatId: true },
     });
-    await wahaSendText(tenantId, phone, message, lastInboxMsg?.chatId ?? undefined);
+    let resolvedChatId: string | undefined = patientRecord?.whatsappChatId ?? undefined;
+    if (!resolvedChatId) {
+      const phoneDigits = phone.replace(/\D/g, "");
+      const normalizedPhone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
+      const lastInboxMsg = await prisma.inboxMessage.findFirst({
+        where: { tenantId, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
+        orderBy: { timestamp: "desc" },
+        select: { chatId: true },
+      });
+      resolvedChatId = lastInboxMsg?.chatId ?? undefined;
+    }
+    await wahaSendText(tenantId, phone, message, resolvedChatId);
     await prisma.whatsAppLog.create({
       data: {
         tenantId,

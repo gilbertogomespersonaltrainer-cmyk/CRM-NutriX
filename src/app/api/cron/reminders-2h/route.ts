@@ -50,15 +50,25 @@ export async function GET(req: Request) {
     });
 
     try {
-      // Busca chatId real do WAHA para resolver LIDs e formatos não-padrão
-      const phoneDigits = apt.patient.phone.replace(/\D/g, "");
-      const normalizedPhone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
-      const lastInboxMsg = await prisma.inboxMessage.findFirst({
-        where: { tenantId: apt.tenantId, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
-        orderBy: { timestamp: "desc" },
-        select: { chatId: true },
+      // Prioridade: 1) whatsappChatId salvo no paciente (cobre LIDs)
+      //             2) último chatId do inbox (fallback)
+      //             3) constrói a partir do telefone
+      const patientRecord = await prisma.patient.findUnique({
+        where: { id: apt.patient.id },
+        select: { whatsappChatId: true },
       });
-      await wahaSendText(apt.tenantId, apt.patient.phone, message, lastInboxMsg?.chatId ?? undefined);
+      let resolvedChatId: string | undefined = patientRecord?.whatsappChatId ?? undefined;
+      if (!resolvedChatId) {
+        const phoneDigits = apt.patient.phone.replace(/\D/g, "");
+        const normalizedPhone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
+        const lastInboxMsg = await prisma.inboxMessage.findFirst({
+          where: { tenantId: apt.tenantId, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
+          orderBy: { timestamp: "desc" },
+          select: { chatId: true },
+        });
+        resolvedChatId = lastInboxMsg?.chatId ?? undefined;
+      }
+      await wahaSendText(apt.tenantId, apt.patient.phone, message, resolvedChatId);
 
       await prisma.appointment.update({
         where: { id: apt.id },
