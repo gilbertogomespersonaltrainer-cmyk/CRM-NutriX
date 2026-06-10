@@ -37,10 +37,10 @@ const STAGE_LABELS: Record<PatientStage, { label: string; color: string }> = {
   FIRST_CONSULTATION: { label: "1ª Consulta", color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
   ACTIVE:             { label: "Ativo",        color: "bg-[#22c55e]/15 text-[#4ade80] border-[#22c55e]/20" },
   INACTIVE:           { label: "Inativo",      color: "bg-red-500/15 text-red-400 border-red-500/20" },
-  REACTIVATED:        { label: "Reativado",    color: "bg-amber-500/15 text-amber-400 border-amber-500/20" },
+  REACTIVATED:        { label: "Ativo",        color: "bg-[#22c55e]/15 text-[#4ade80] border-[#22c55e]/20" },
 };
 
-const STAGES: PatientStage[] = ["LEAD", "FIRST_CONSULTATION", "ACTIVE", "INACTIVE", "REACTIVATED"];
+const STAGES: PatientStage[] = ["LEAD", "FIRST_CONSULTATION", "ACTIVE", "INACTIVE"];
 
 // All template types with human-readable labels and descriptions
 const TEMPLATE_META: Record<string, { label: string; description: string }> = {

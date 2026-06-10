@@ -62,8 +62,8 @@ export async function POST(req: Request) {
     // Automação de Pipeline: avança o estágio do paciente ao criar agendamento
     // LEAD → FIRST_CONSULTATION (primeiro agendamento confirmado)
     // INACTIVE → REACTIVATED (voltou a agendar após inatividade)
-    if (patient.stage === "LEAD" || patient.stage === "INACTIVE") {
-      const newStage = patient.stage === "LEAD" ? "FIRST_CONSULTATION" : "REACTIVATED";
+    if (patient.stage === "LEAD" || patient.stage === "INACTIVE" || patient.stage === "REACTIVATED") {
+      const newStage = patient.stage === "LEAD" ? "FIRST_CONSULTATION" : "ACTIVE";
       await prisma.patient.update({
         where: { id: patient.id },
         data: { stage: newStage, isActive: true },

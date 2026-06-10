@@ -50,7 +50,6 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: "FIRST_CONSULTATION", label: "1ª Consulta", visible: true, filledIcon: "users", variant: "blue" },
   { key: "ACTIVE", label: "Ativo", visible: true, filledIcon: "userCheck", variant: "green" },
   { key: "INACTIVE", label: "Inativo", visible: true, filledIcon: "userX", variant: "red" },
-  { key: "REACTIVATED", label: "Reativado", visible: true, filledIcon: "refresh", variant: "amber" },
 ];
 
 const CHANNEL_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
@@ -411,6 +410,7 @@ export default function PipelinePage() {
   const fetchPatients = useCallback(async () => {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
+    params.set("includeLeads", "true");
     const res = await fetch(`/api/patients?${params}`);
     if (res.ok) {
       const data = await res.json();
@@ -528,9 +528,12 @@ export default function PipelinePage() {
         acc[col.key] = filteredPatients.filter((p) => customPositions[p.id] === col.key);
       } else {
         // Standard column: patients in this stage AND not in a custom column
-        acc[col.key] = filteredPatients.filter(
-          (p) => p.stage === col.key && !customPositions[p.id]
-        );
+        // REACTIVATED patients are shown alongside ACTIVE (same column)
+        acc[col.key] = filteredPatients.filter((p) => {
+          if (customPositions[p.id]) return false;
+          if (col.key === "ACTIVE") return p.stage === "ACTIVE" || p.stage === "REACTIVATED";
+          return p.stage === col.key;
+        });
       }
       return acc;
     },

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
 
-const VALID_STAGES = ["LEAD", "FIRST_CONSULTATION", "ACTIVE", "INACTIVE", "REACTIVATED"] as const;
+const VALID_STAGES = ["LEAD", "FIRST_CONSULTATION", "ACTIVE", "INACTIVE"] as const;
 
 export async function PATCH(
   req: Request,
@@ -29,7 +29,6 @@ export async function PATCH(
       data: {
         stage,
         isActive,
-        ...(stage === "REACTIVATED" ? { lastReactivationAt: new Date() } : {}),
       },
     });
 
