@@ -59,6 +59,17 @@ export async function POST(req: Request) {
       include: { patient: { select: { name: true, phone: true } } },
     });
 
+    // Automação de Pipeline: avança o estágio do paciente ao criar agendamento
+    // LEAD → FIRST_CONSULTATION (primeiro agendamento confirmado)
+    // INACTIVE → REACTIVATED (voltou a agendar após inatividade)
+    if (patient.stage === "LEAD" || patient.stage === "INACTIVE") {
+      const newStage = patient.stage === "LEAD" ? "FIRST_CONSULTATION" : "REACTIVATED";
+      await prisma.patient.update({
+        where: { id: patient.id },
+        data: { stage: newStage, isActive: true },
+      });
+    }
+
     // Envia confirmação automática via WhatsApp
     try {
       const tenant = await prisma.tenant.findUnique({

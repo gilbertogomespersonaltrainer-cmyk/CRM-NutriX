@@ -30,9 +30,18 @@ export async function PUT(
     });
 
     if (body.status === "COMPLETED") {
+      const patient = await prisma.patient.findUnique({
+        where: { id: existing.patientId },
+        select: { stage: true },
+      });
+
+      // Automação de Pipeline: FIRST_CONSULTATION → ACTIVE ao concluir a 1ª consulta
+      const stageUpdate =
+        patient?.stage === "FIRST_CONSULTATION" ? { stage: "ACTIVE" as const } : {};
+
       await prisma.patient.update({
         where: { id: existing.patientId },
-        data: { lastAppointmentAt: new Date(), isActive: true },
+        data: { lastAppointmentAt: new Date(), isActive: true, ...stageUpdate },
       });
     }
 
