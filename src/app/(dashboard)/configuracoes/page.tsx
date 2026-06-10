@@ -594,7 +594,7 @@ export default function ConfiguracoesPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Adicionar Tipo</CardTitle>
+              <CardTitle>Adicionar Serviço</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={addServiceType} className="flex gap-4 items-end">
