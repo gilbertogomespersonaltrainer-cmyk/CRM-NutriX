@@ -15,6 +15,7 @@ type Conversation = {
   unread: number;
   patientId: string | null;
   patientName: string | null;
+  patientPhone: string | null;
   patientStage: PatientStage | null;
 };
 
@@ -81,11 +82,13 @@ function getDisplayName(conv: Conversation) {
 }
 
 function getDisplaySubtitle(conv: Conversation) {
-  // Linha secundária: mostra o número real se tiver nome, ou omite LID
-  if (conv.patientName || conv.name) {
-    if (isLidNumber(conv.phone)) return "WhatsApp";
-    return formatPhone(conv.phone);
+  // Para contatos LID: mostra o telefone real do paciente vinculado quando disponível
+  if (isLidNumber(conv.phone)) {
+    if (conv.patientPhone) return formatPhone(conv.patientPhone);
+    return "WhatsApp";
   }
+  // Para números normais: mostra o telefone se tiver nome (paciente ou pushName)
+  if (conv.patientName || conv.name) return formatPhone(conv.phone);
   return null;
 }
 
@@ -366,7 +369,9 @@ export default function InboxPage() {
               <p className="text-sm font-semibold text-white truncate">{getDisplayName(selectedConv)}</p>
               <p className="text-xs text-[#555]">
                 {isLidNumber(selectedConv.phone)
-                  ? "WhatsApp — sem número identificável"
+                  ? selectedConv.patientPhone
+                    ? formatPhone(selectedConv.patientPhone)
+                    : "WhatsApp — sem número identificável"
                   : formatPhone(selectedConv.phone)}
               </p>
             </div>

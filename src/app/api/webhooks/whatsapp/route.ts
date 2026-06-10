@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { wahaSessionName } from "@/lib/waha";
+import { wahaSessionName, wahaGetContactPhone } from "@/lib/waha";
 
 export async function POST(req: Request) {
   try {
@@ -98,13 +98,39 @@ export async function POST(req: Request) {
 
         let patientId: string | null = existing?.id ?? null;
 
+        // Para contatos LID não identificados: tenta buscar o telefone real via WAHA (não-bloqueante)
+        let resolvedPhone = phone;
+        if (!existing && !fromMe && rawChatId.endsWith("@lid")) {
+          try {
+            const realDigits = await wahaGetContactPhone(tenant.id, rawChatId);
+            if (realDigits) {
+              const realPhone = realDigits.length <= 11 ? `55${realDigits}` : realDigits;
+              // Verifica se esse telefone real já está cadastrado
+              const byRealPhone = await prisma.patient.findFirst({
+                where: { tenantId: tenant.id, phone: { contains: realDigits.slice(-10) } },
+              });
+              if (byRealPhone) {
+                existing = byRealPhone;
+                patientId = byRealPhone.id;
+                // Vincula o JID LID ao paciente encontrado
+                await prisma.patient.update({
+                  where: { id: byRealPhone.id },
+                  data: { whatsappChatId: rawChatId },
+                });
+              } else {
+                resolvedPhone = realPhone; // usa o telefone real ao criar o lead
+              }
+            }
+          } catch { /* não-bloqueante */ }
+        }
+
         // Se não existe e a mensagem é de fora (não enviada por mim), cria Lead
         if (!existing && !fromMe) {
           const newPatient = await prisma.patient.create({
             data: {
               tenantId: tenant.id,
-              name: contactName ?? `Contato ${phone}`,
-              phone,
+              name: contactName ?? `Contato ${resolvedPhone}`,
+              phone: resolvedPhone,
               whatsappChatId: rawChatId, // salva JID desde a criação
               stage: "LEAD",
               isActive: true,
@@ -116,7 +142,7 @@ export async function POST(req: Request) {
         await prisma.inboxMessage.create({
           data: {
             tenantId: tenant.id,
-            phone,
+            phone: resolvedPhone,
             chatId: rawChatId, // JID original — essencial para responder corretamente
             name: contactName,
             body: messageBody,

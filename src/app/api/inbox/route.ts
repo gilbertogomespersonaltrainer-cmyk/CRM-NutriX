@@ -11,7 +11,7 @@ export async function GET() {
       where: { tenantId },
       orderBy: { timestamp: "desc" },
       include: {
-        patient: { select: { id: true, name: true, stage: true } },
+        patient: { select: { id: true, name: true, stage: true, phone: true } },
       },
     });
 
@@ -24,6 +24,7 @@ export async function GET() {
       unread: number;
       patientId: string | null;
       patientName: string | null;
+      patientPhone: string | null;
       patientStage: string | null;
     }>();
 
@@ -37,6 +38,7 @@ export async function GET() {
           unread: msg.read || msg.fromMe ? 0 : 1,
           patientId: msg.patientId,
           patientName: msg.patient?.name ?? null,
+          patientPhone: msg.patient?.phone ?? null,
           patientStage: msg.patient?.stage ?? null,
         });
       } else {

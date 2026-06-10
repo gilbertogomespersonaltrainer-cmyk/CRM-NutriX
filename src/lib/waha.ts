@@ -120,6 +120,28 @@ export async function wahaStopSession(tenantId: string) {
   } catch { /* ignora */ }
 }
 
+// Tenta buscar o número de telefone real de um contato LID via API do WAHA.
+// Retorna apenas os dígitos (sem DDI) ou null se não conseguir.
+export async function wahaGetContactPhone(tenantId: string, chatId: string): Promise<string | null> {
+  const name = wahaSessionName(tenantId);
+  try {
+    const res = await wahaFetch(
+      `${WAHA_URL}/api/${name}/contacts?contactId=${encodeURIComponent(chatId)}`,
+      { headers: wahaHeaders() },
+      3000
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    // WAHA pode retornar um array ou objeto; extrai o campo number/phone
+    const contact = Array.isArray(data) ? data[0] : data;
+    const raw: string | null = contact?.number ?? contact?.phone ?? null;
+    if (!raw) return null;
+    return raw.replace(/\D/g, "") || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function wahaSendText(
   tenantId: string,
   phone: string,

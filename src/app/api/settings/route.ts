@@ -22,9 +22,18 @@ export async function GET() {
         appointmentTypes: true,
         zapiInstanceId: true,
         zapiClientToken: true,
+        googleCalendarEnabled: true,
+        googleCalendarId: true,
+        googleRefreshToken: true, // só para verificar se está conectado (não exposto raw)
       },
     });
-    return NextResponse.json(tenant);
+    // Expõe apenas se está conectado (não expõe o token em si)
+    const result = {
+      ...tenant,
+      googleCalendarConnected: !!(tenant?.googleRefreshToken),
+      googleRefreshToken: undefined, // nunca expõe o token ao frontend
+    };
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "Erro ao buscar configurações" }, { status: 500 });
   }

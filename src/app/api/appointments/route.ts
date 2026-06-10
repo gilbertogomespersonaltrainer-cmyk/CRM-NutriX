@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
 import { wahaSendText } from "@/lib/waha";
 import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
+import { createCalendarEvent } from "@/lib/google-calendar";
 
 export async function GET(req: Request) {
   try {
@@ -133,6 +134,26 @@ export async function POST(req: Request) {
       // Não bloqueia a criação do agendamento se o envio falhar
       console.error("[confirmation-send]", err);
     }
+
+    // Cria evento no Google Calendar (não-bloqueante — falha silenciosa)
+    try {
+      const googleEventId = await createCalendarEvent(
+        tenantId,
+        {
+          scheduledAt: appointment.scheduledAt,
+          duration: appointment.duration,
+          consultationType: appointment.consultationType,
+          notes: appointment.notes,
+        },
+        patient.name
+      );
+      if (googleEventId) {
+        await prisma.appointment.update({
+          where: { id: appointment.id },
+          data: { googleEventId },
+        });
+      }
+    } catch { /* não-bloqueante */ }
 
     return NextResponse.json(appointment, { status: 201 });
   } catch {

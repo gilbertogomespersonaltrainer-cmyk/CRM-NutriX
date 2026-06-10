@@ -22,6 +22,9 @@ import {
   Smartphone,
   Pencil,
   X,
+  Calendar,
+  ExternalLink,
+  Unlink,
 } from "lucide-react";
 
 type TenantSettings = {
@@ -35,6 +38,9 @@ type TenantSettings = {
   defaultDuration: number;
   whatsappStatus: string;
   appointmentTypes: string[];
+  googleCalendarEnabled: boolean;
+  googleCalendarConnected: boolean;
+  googleCalendarId: string | null;
 };
 
 type ServiceType = {
@@ -75,7 +81,8 @@ export default function ConfiguracoesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"profile" | "services" | "whatsapp" | "templates">("profile");
+  const [tab, setTab] = useState<"profile" | "services" | "whatsapp" | "templates" | "agenda">("profile");
+  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
   const [logo, setLogo] = useState<string>("");
   const [brandColor, setBrandColor] = useState<string>("#15803d");
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -136,6 +143,21 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     fetchAll();
+    // Abre a aba correta se vier de redirect OAuth (?tab=agenda&success=1)
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam === "agenda") {
+        setTab("agenda");
+        if (params.get("success") === "1") {
+          toast({ title: "Google Agenda conectado com sucesso!", variant: "success" });
+        } else if (params.get("error")) {
+          toast({ title: "Falha ao conectar Google Agenda", variant: "error" });
+        }
+        // Remove os params da URL sem recarregar
+        window.history.replaceState({}, "", "/configuracoes");
+      }
+    }
   }, [fetchAll]);
 
   // Poll WhatsApp status while connecting
@@ -324,6 +346,7 @@ export default function ConfiguracoesPage() {
           { key: "services" as const, label: "Tipos de Serviço", filledIcon: "receipt" as const, variant: "emerald" as const },
           { key: "whatsapp" as const, label: "WhatsApp", filledIcon: "message" as const, variant: "green" as const },
           { key: "templates" as const, label: "Templates", filledIcon: "clipboard" as const, variant: "purple" as const },
+          { key: "agenda" as const, label: "Google Agenda", filledIcon: "calendar" as const, variant: "cyan" as const },
         ].map((t) => (
           <button
             key={t.key}
@@ -821,6 +844,100 @@ export default function ConfiguracoesPage() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* ── AGENDA ── */}
+      {tab === "agenda" && settings && (
+        <div className="max-w-xl space-y-6">
+          <div>
+            <h2 className="text-sm font-semibold text-white mb-1">Google Agenda</h2>
+            <p className="text-sm text-[#666]">
+              Ao conectar, cada agendamento criado no NutriX será automaticamente adicionado ao seu Google Agenda, evitando conflito com outros compromissos.
+            </p>
+          </div>
+
+          {/* Status Card */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                    settings.googleCalendarConnected
+                      ? "bg-[#22c55e]/10 border-[#22c55e]/20"
+                      : "bg-[#111] border-[#222]"
+                  }`}>
+                    <Calendar className={`h-5 w-5 ${settings.googleCalendarConnected ? "text-[#4ade80]" : "text-[#555]"}`} strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">Google Agenda</p>
+                    <p className="text-xs text-[#666] mt-0.5">
+                      {settings.googleCalendarConnected ? "Conectado e sincronizando" : "Não conectado"}
+                    </p>
+                  </div>
+                </div>
+
+                {settings.googleCalendarConnected ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={disconnectingGoogle}
+                    onClick={async () => {
+                      setDisconnectingGoogle(true);
+                      try {
+                        const res = await fetch("/api/google/disconnect", { method: "DELETE" });
+                        if (res.ok) {
+                          setSettings(s => s ? { ...s, googleCalendarConnected: false, googleCalendarEnabled: false } : s);
+                          toast({ title: "Google Agenda desconectado", variant: "success" });
+                        }
+                      } finally {
+                        setDisconnectingGoogle(false);
+                      }
+                    }}
+                  >
+                    {disconnectingGoogle
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Unlink className="h-4 w-4" />
+                    }
+                    Desconectar
+                  </Button>
+                ) : (
+                  <a href="/api/google/auth">
+                    <Button>
+                      <ExternalLink className="h-4 w-4" />
+                      Conectar Google Agenda
+                    </Button>
+                  </a>
+                )}
+              </div>
+
+              {settings.googleCalendarConnected && (
+                <div className="mt-4 pt-4 border-t border-[#1a1a1a] flex items-center gap-2">
+                  <CheckCircle className="h-3.5 w-3.5 text-[#22c55e]" />
+                  <p className="text-xs text-[#666]">
+                    Novos agendamentos são criados no seu Google Agenda automaticamente.
+                    Cancelamentos e alterações de horário também são sincronizados.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Instruções */}
+          {!settings.googleCalendarConnected && (
+            <div className="p-4 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] space-y-3">
+              <p className="text-xs font-semibold text-[#666] uppercase tracking-wider">Como configurar</p>
+              <ol className="space-y-2 text-xs text-[#666]">
+                <li className="flex gap-2"><span className="text-[#22c55e] font-bold shrink-0">1.</span>Clique em <span className="text-white font-medium">Conectar Google Agenda</span></li>
+                <li className="flex gap-2"><span className="text-[#22c55e] font-bold shrink-0">2.</span>Faça login com a conta Google onde quer ver as consultas</li>
+                <li className="flex gap-2"><span className="text-[#22c55e] font-bold shrink-0">3.</span>Autorize o NutriX a gerenciar eventos do Agenda</li>
+                <li className="flex gap-2"><span className="text-[#22c55e] font-bold shrink-0">4.</span>Pronto — os próximos agendamentos aparecerão no seu Google Agenda automaticamente</li>
+              </ol>
+              <p className="text-[11px] text-[#444]">
+                Apenas eventos de consultas são criados. O NutriX não lê nenhum outro evento da sua agenda.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

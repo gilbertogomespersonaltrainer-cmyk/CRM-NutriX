@@ -145,11 +145,15 @@ model Tenant {
   defaultDuration       Int            @default(50)
   workingHours          Json?
   appointmentTypes      String[]       @default([])
-  postConsultEnabled    Boolean        @default(false)
-  postConsultDayOfWeek  Int            @default(1)
-  postConsultDaysAfter  Int            @default(3)
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
+  postConsultEnabled      Boolean        @default(false)
+  postConsultDayOfWeek    Int            @default(1)
+  postConsultDaysAfter    Int            @default(3)
+  googleCalendarEnabled   Boolean        @default(false)
+  googleAccessToken       String?
+  googleRefreshToken      String?
+  googleCalendarId        String?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
 
   subscription        Subscription?
   patients            Patient[]
@@ -232,6 +236,7 @@ model Appointment {
   reminder24hSent  Boolean           @default(false)
   reminder2hSent   Boolean           @default(false)
   postConsultSent  Boolean           @default(false)
+  googleEventId    String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
