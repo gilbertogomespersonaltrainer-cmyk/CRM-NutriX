@@ -9,7 +9,13 @@ export async function GET(req: Request) {
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status");
 
+    const includeLeads = searchParams.get("includeLeads") === "true";
     const where: Record<string, unknown> = { tenantId };
+
+    // Exclui LEADs do menu Pacientes por padrão — leads ficam no Pipeline
+    if (!includeLeads) {
+      where.stage = { not: "LEAD" };
+    }
 
     if (status === "active") where.isActive = true;
     if (status === "inactive") where.isActive = false;

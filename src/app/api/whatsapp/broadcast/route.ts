@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
 import { wahaSendText } from "@/lib/waha";
+import { replaceTemplateVars } from "@/lib/templates";
 
 const DELAY_MS = 1500; // 1.5s entre cada mensagem para evitar banimento
 
@@ -28,10 +29,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "WhatsApp não conectado" }, { status: 400 });
     }
 
-    const patients = await prisma.patient.findMany({
-      where: { id: { in: patientIds }, tenantId },
-      select: { id: true, name: true, phone: true },
-    });
+    const [patients, tenantInfo] = await Promise.all([
+      prisma.patient.findMany({
+        where: { id: { in: patientIds }, tenantId },
+        select: { id: true, name: true, phone: true, whatsappChatId: true },
+      }),
+      prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true, clinicName: true },
+      }),
+    ]);
 
     let sent = 0;
     let failed = 0;
@@ -39,10 +46,14 @@ export async function POST(req: Request) {
     // Envio sequencial com delay — evita comportamento de disparo em massa
     for (let i = 0; i < patients.length; i++) {
       const patient = patients[i];
-      const personalizedMessage = message.replace(/\{nome_paciente\}/g, patient.name.split(" ")[0]);
+      const personalizedMessage = replaceTemplateVars(message, {
+        nome_paciente: patient.name.split(" ")[0],
+        nome_nutricionista: tenantInfo?.name ?? "",
+        nome_clinica: tenantInfo?.clinicName ?? "",
+      });
 
       try {
-        await wahaSendText(tenantId, patient.phone, personalizedMessage);
+        await wahaSendText(tenantId, patient.phone, personalizedMessage, patient.whatsappChatId ?? undefined);
         await prisma.whatsAppLog.create({
           data: {
             tenantId,

@@ -110,7 +110,7 @@ export default function MensagensPage() {
   const fetchPatients = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/patients");
+      const res = await fetch("/api/patients?includeLeads=true");
       const data = await res.json();
       setPatients(Array.isArray(data) ? data : []);
     } catch {

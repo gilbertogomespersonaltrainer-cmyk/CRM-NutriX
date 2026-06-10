@@ -155,6 +155,9 @@ export default function InativosPage() {
                       {lastContact && (
                         <p className="text-xs text-[#444] mt-0.5">
                           Último contato: {new Date(lastContact.contactedAt).toLocaleDateString("pt-BR")}
+                          {lastContact.notes && (
+                            <span className="text-[#555]"> — {lastContact.notes}</span>
+                          )}
                         </p>
                       )}
                     </div>

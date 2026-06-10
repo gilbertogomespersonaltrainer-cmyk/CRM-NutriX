@@ -219,7 +219,7 @@ export default function InboxPage() {
     if (!linkModal) return;
     const timeout = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/patients?search=${encodeURIComponent(linkSearch)}`);
+        const res = await fetch(`/api/patients?search=${encodeURIComponent(linkSearch)}&includeLeads=true`);
         if (res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : [];
