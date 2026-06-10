@@ -23,12 +23,25 @@ export function wahaSessionName(tenantId: string) {
 export async function wahaStartSession(tenantId: string) {
   const name = wahaSessionName(tenantId);
 
-  // Deleta sessão anterior (se existir) para garantir QR novo
+  // Sequência de limpeza completa: stop → logout → delete
+  // Logout remove as chaves de sessão do WhatsApp, evitando estado corrompido
+  try {
+    await wahaFetch(`${WAHA_URL}/api/sessions/${name}/stop`, { method: "POST", headers: wahaHeaders() });
+  } catch { /* ignora */ }
+
+  await new Promise(r => setTimeout(r, 500));
+
+  try {
+    await wahaFetch(`${WAHA_URL}/api/sessions/${name}/logout`, { method: "POST", headers: wahaHeaders() });
+  } catch { /* ignora */ }
+
+  await new Promise(r => setTimeout(r, 500));
+
   try {
     await wahaFetch(`${WAHA_URL}/api/sessions/${name}`, { method: "DELETE", headers: wahaHeaders() });
   } catch { /* ignora erro de timeout/inexistente */ }
 
-  await new Promise(r => setTimeout(r, 800));
+  await new Promise(r => setTimeout(r, 1500));
 
   const APP_URL = process.env.NEXTAUTH_URL || "https://crmnutrix.com.br";
 
