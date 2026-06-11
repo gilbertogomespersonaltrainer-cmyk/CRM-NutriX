@@ -71,7 +71,7 @@ const COLUMN_MAP: Record<string, keyof ImportRow> = {
   endereço: "address", endereco: "address", address: "address",
   "como conheceu": "howFoundUs", origem: "howFoundUs", canal: "howFoundUs",
   howfoundus: "howFoundUs", como_conheceu: "howFoundUs",
-  "observações": "notes", observacoes: "notes", observações: "notes",
+  "observações": "notes", observacoes: "notes",
   notas: "notes", obs: "notes", notes: "notes", anotações: "notes", anotacoes: "notes",
 };
 
