@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { wahaSendText } from "@/lib/waha";
+import { replaceTemplateVars } from "@/lib/templates";
 
 export async function GET(req: Request) {
   const secret = req.headers.get("authorization")?.replace("Bearer ", "")
@@ -51,8 +52,11 @@ export async function GET(req: Request) {
     for (const patient of patients) {
       if (!patient.phone) continue;
 
-      const firstName = patient.name.split(" ")[0];
-      const message = template.content.replace(/\{nome_paciente\}/g, firstName);
+      const message = replaceTemplateVars(template.content, {
+        nome_paciente: patient.name.split(" ")[0],
+        nome_nutricionista: tenant.name,
+        nome_clinica: tenant.clinicName || "",
+      });
 
       try {
         await wahaSendText(tenant.id, patient.phone, message);

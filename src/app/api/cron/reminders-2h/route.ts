@@ -47,6 +47,7 @@ export async function GET(req: Request) {
       nome_clinica: apt.tenant.clinicName || "",
       data_consulta: formatDateBR(scheduledDate),
       hora_consulta: formatTimeBR(scheduledDate),
+      tipo_consulta: apt.consultationType || "",
     });
 
     try {
