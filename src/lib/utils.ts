@@ -26,6 +26,13 @@ export function formatDateTime(date: Date | string): string {
   }).format(new Date(date));
 }
 
+// Números de WhatsApp com mais de 13 dígitos são LIDs (identificadores internos
+// do WhatsApp), não telefones reais — o WhatsApp não expõe o número de contatos
+// não salvos quando esse sistema está ativo.
+export function isLidPhone(phone: string): boolean {
+  return phone.replace(/\D/g, "").length > 13;
+}
+
 export function formatPhone(phone: string): string {
   const cleaned = phone.replace(/\D/g, "");
   if (cleaned.length === 11) {
@@ -33,6 +40,9 @@ export function formatPhone(phone: string): string {
   }
   if (cleaned.length === 10) {
     return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
+  }
+  if (cleaned.length > 13) {
+    return "Número não identificado";
   }
   return phone;
 }

@@ -13,7 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
-import { formatPhone, daysSince } from "@/lib/utils";
+import { formatPhone, isLidPhone, daysSince } from "@/lib/utils";
 import {
   UserX,
   MessageCircle,
@@ -169,30 +169,34 @@ export default function InativosPage() {
                         {days} dias
                       </Badge>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        sendWhatsApp(patient.id, patient.phone, patient.name)
-                      }
-                      disabled={sending === patient.id}
-                    >
-                      {sending === patient.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                      WhatsApp
-                    </Button>
-                    <a
-                      href={`https://wa.me/55${patient.phone.replace(/\D/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button variant="secondary" size="sm">
-                        <MessageCircle className="h-4 w-4" />
-                      </Button>
-                    </a>
+                    {!isLidPhone(patient.phone) && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            sendWhatsApp(patient.id, patient.phone, patient.name)
+                          }
+                          disabled={sending === patient.id}
+                        >
+                          {sending === patient.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                          WhatsApp
+                        </Button>
+                        <a
+                          href={`https://wa.me/55${patient.phone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button variant="secondary" size="sm">
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                        </a>
+                      </>
+                    )}
                     <Button
                       variant="secondary"
                       size="sm"

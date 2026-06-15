@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
-import { formatPhone } from "@/lib/utils";
+import { formatPhone, isLidPhone } from "@/lib/utils";
 import { GlassIcon } from "@/components/ui/premium-icon";
 import {
   Search,
@@ -181,16 +181,18 @@ function PatientCard({
           )}
         </div>
 
-        <a
-          href={`https://wa.me/55${patient.phone.replace(/\D/g, "")}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="w-7 h-7 rounded-lg bg-[#161616] border border-[#222] flex items-center justify-center hover:border-[#22c55e]/30 hover:bg-[#22c55e]/5 transition-all duration-200 shrink-0"
-          title="WhatsApp"
-        >
-          <MessageCircle className="h-3 w-3 text-[#4ade80]" strokeWidth={1.6} />
-        </a>
+        {!isLidPhone(patient.phone) && (
+          <a
+            href={`https://wa.me/55${patient.phone.replace(/\D/g, "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="w-7 h-7 rounded-lg bg-[#161616] border border-[#222] flex items-center justify-center hover:border-[#22c55e]/30 hover:bg-[#22c55e]/5 transition-all duration-200 shrink-0"
+            title="WhatsApp"
+          >
+            <MessageCircle className="h-3 w-3 text-[#4ade80]" strokeWidth={1.6} />
+          </a>
+        )}
       </div>
     </div>
   );

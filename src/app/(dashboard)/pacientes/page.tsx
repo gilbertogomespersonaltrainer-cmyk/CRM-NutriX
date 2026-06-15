@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
-import { formatPhone } from "@/lib/utils";
+import { formatPhone, isLidPhone } from "@/lib/utils";
 import {
   Plus,
   Search,
@@ -593,16 +593,18 @@ function PacientesContent() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <a
-                      href={`https://wa.me/55${patient.phone.replace(/\D/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-8 h-8 rounded-lg bg-[#161616] border border-[#222] flex items-center justify-center hover:border-[#22c55e]/30 hover:bg-[#22c55e]/5 transition-all duration-200"
-                      title="Abrir WhatsApp"
-                    >
-                      <MessageCircle className="h-3.5 w-3.5 text-[#4ade80]" strokeWidth={1.6} />
-                    </a>
+                    {!isLidPhone(patient.phone) && (
+                      <a
+                        href={`https://wa.me/55${patient.phone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 rounded-lg bg-[#161616] border border-[#222] flex items-center justify-center hover:border-[#22c55e]/30 hover:bg-[#22c55e]/5 transition-all duration-200"
+                        title="Abrir WhatsApp"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 text-[#4ade80]" strokeWidth={1.6} />
+                      </a>
+                    )}
                     <Badge variant={patient.isActive ? "active" : "inactive"}>
                       {patient.isActive ? "Ativo" : "Inativo"}
                     </Badge>

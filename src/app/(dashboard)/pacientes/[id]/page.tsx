@@ -21,6 +21,7 @@ import {
   formatDate,
   formatDateTime,
   formatPhone,
+  isLidPhone,
   daysSince,
 } from "@/lib/utils";
 import { GlassIcon } from "@/components/ui/premium-icon";
@@ -206,16 +207,18 @@ export default function PatientDetailPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <a
-            href={`https://wa.me/55${patient.phone.replace(/\D/g, "")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button variant="ghost" size="sm">
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </Button>
-          </a>
+          {!isLidPhone(patient.phone) && (
+            <a
+              href={`https://wa.me/55${patient.phone.replace(/\D/g, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="sm">
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
+              </Button>
+            </a>
+          )}
           <Button variant="secondary" size="sm" onClick={() => setShowEdit(true)}>
             <Edit className="h-4 w-4" />
             Editar
