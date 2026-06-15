@@ -142,16 +142,17 @@ export async function GET(req: Request) {
     }
 
     if (type === "patients") {
+      // Leads não são pacientes — não devem ser contabilizados em nenhuma métrica desta seção
       const patients = await prisma.patient.findMany({
-        where: { tenantId, createdAt: { gte: start, lte: end } },
+        where: { tenantId, createdAt: { gte: start, lte: end }, stage: { not: "LEAD" } },
         include: {
           _count: { select: { appointments: true, payments: true } },
         },
         orderBy: { createdAt: "desc" },
       });
 
-      const allActive = await prisma.patient.count({ where: { tenantId, isActive: true } });
-      const allInactive = await prisma.patient.count({ where: { tenantId, isActive: false } });
+      const allActive = await prisma.patient.count({ where: { tenantId, isActive: true, stage: { not: "LEAD" } } });
+      const allInactive = await prisma.patient.count({ where: { tenantId, isActive: false, stage: { not: "LEAD" } } });
 
       const byOrigin: Record<string, number> = {};
       patients.forEach(p => {

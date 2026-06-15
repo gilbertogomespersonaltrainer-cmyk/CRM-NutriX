@@ -28,8 +28,8 @@ export async function GET() {
         include: { patient: { select: { name: true, phone: true } } },
         orderBy: { scheduledAt: "asc" },
       }),
-      prisma.patient.count({ where: { tenantId, isActive: true } }),
-      prisma.patient.count({ where: { tenantId, isActive: false } }),
+      prisma.patient.count({ where: { tenantId, isActive: true, stage: { not: "LEAD" } } }),
+      prisma.patient.count({ where: { tenantId, isActive: false, stage: { not: "LEAD" } } }),
       prisma.payment.aggregate({
         where: {
           tenantId,
