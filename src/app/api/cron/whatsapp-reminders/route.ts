@@ -302,28 +302,35 @@ async function sendReactivation() {
 }
 
 export async function GET(req: Request) {
-  try {
-    if (!authorizeCron(req)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const [reminders8d, reminders24h, postConsult, birthdays, reactivations] =
-      await Promise.all([
-        sendReminders8d(),
-        sendReminders24h(),
-        sendPostConsultation(),
-        sendBirthday(),
-        sendReactivation(),
-      ]);
-
-    return NextResponse.json({
-      reminders8d,
-      reminders24h,
-      postConsult,
-      birthdays,
-      reactivations,
-    });
-  } catch {
-    return NextResponse.json({ error: "Cron error" }, { status: 500 });
+  if (!authorizeCron(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const tasks = {
+    reminders8d: sendReminders8d(),
+    reminders24h: sendReminders24h(),
+    postConsult: sendPostConsultation(),
+    birthdays: sendBirthday(),
+    reactivations: sendReactivation(),
+  };
+
+  const results = await Promise.allSettled(Object.values(tasks));
+  const taskNames = Object.keys(tasks) as (keyof typeof tasks)[];
+
+  const summary: Record<string, number | { error: string }> = {};
+  let hasError = false;
+
+  results.forEach((result, i) => {
+    const name = taskNames[i];
+    if (result.status === "fulfilled") {
+      summary[name] = result.value;
+    } else {
+      hasError = true;
+      const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
+      console.error(`[cron/whatsapp-reminders] Falha em "${name}":`, result.reason);
+      summary[name] = { error: message };
+    }
+  });
+
+  return NextResponse.json(summary, { status: hasError ? 207 : 200 });
 }

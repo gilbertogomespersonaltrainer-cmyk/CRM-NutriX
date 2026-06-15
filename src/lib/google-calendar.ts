@@ -122,7 +122,8 @@ async function calendarRequest(
       data: { googleAccessToken: accessToken },
     });
     return await doRequest(accessToken);
-  } catch {
+  } catch (err) {
+    console.error(`[GoogleCalendar] Falha ao renovar token do tenant ${tenantId}:`, err);
     return null;
   }
 }
@@ -190,10 +191,14 @@ export async function createCalendarEvent(
       appointment.notes
     );
     const res = await calendarRequest(tenantId, "POST", `/calendars/${calendarId}/events`, body);
-    if (!res || !res.ok) return null;
+    if (!res || !res.ok) {
+      console.error(`[GoogleCalendar] Falha ao criar evento para tenant ${tenantId}:`, res ? await res.text() : "sem resposta");
+      return null;
+    }
     const data = await res.json();
     return data.id as string;
-  } catch {
+  } catch (err) {
+    console.error(`[GoogleCalendar] Erro ao criar evento para tenant ${tenantId}:`, err);
     return null;
   }
 }
@@ -223,7 +228,9 @@ export async function updateCalendarEvent(
       appointment.notes
     );
     await calendarRequest(tenantId, "PATCH", `/calendars/${calendarId}/events/${eventId}`, body);
-  } catch { /* non-blocking */ }
+  } catch (err) {
+    console.error(`[GoogleCalendar] Erro ao atualizar evento ${eventId} (tenant ${tenantId}):`, err);
+  }
 }
 
 export async function deleteCalendarEvent(
@@ -237,7 +244,9 @@ export async function deleteCalendarEvent(
     });
     const calendarId = encodeURIComponent(tenant?.googleCalendarId || "primary");
     await calendarRequest(tenantId, "DELETE", `/calendars/${calendarId}/events/${eventId}`);
-  } catch { /* non-blocking */ }
+  } catch (err) {
+    console.error(`[GoogleCalendar] Erro ao excluir evento ${eventId} (tenant ${tenantId}):`, err);
+  }
 }
 
 export async function revokeGoogleAccess(tenantId: string): Promise<void> {

@@ -153,7 +153,9 @@ export async function POST(req: Request) {
           data: { googleEventId },
         });
       }
-    } catch { /* não-bloqueante */ }
+    } catch (err) {
+      console.error("[google-calendar-sync]", err);
+    }
 
     return NextResponse.json(appointment, { status: 201 });
   } catch {
