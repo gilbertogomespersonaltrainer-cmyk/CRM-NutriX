@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Search, Send, MessageCircle, User, Loader2, CheckCheck, Link2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/toaster";
 
 type PatientStage = "LEAD" | "FIRST_CONSULTATION" | "ACTIVE" | "INACTIVE" | "REACTIVATED";
 
@@ -203,8 +204,15 @@ export default function InboxPage() {
               : c
           )
         );
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast({ title: data.error || "Erro ao enviar mensagem", variant: "error" });
+        setReply(text);
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      toast({ title: "Erro ao enviar mensagem", variant: "error" });
+      setReply(text);
+    } finally {
       setSending(false);
       textareaRef.current?.focus();
     }

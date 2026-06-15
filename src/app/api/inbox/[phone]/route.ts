@@ -64,7 +64,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ phone: 
     });
 
     return NextResponse.json(msg);
-  } catch {
-    return NextResponse.json({ error: "Erro ao enviar mensagem" }, { status: 500 });
+  } catch (err) {
+    console.error("[inbox/send] erro:", err);
+    return NextResponse.json({ error: "Erro ao enviar mensagem. Verifique se o WhatsApp está conectado." }, { status: 500 });
   }
 }

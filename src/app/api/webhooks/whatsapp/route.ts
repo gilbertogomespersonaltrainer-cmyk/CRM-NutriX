@@ -98,8 +98,12 @@ export async function POST(req: Request) {
 
         let patientId: string | null = existing?.id ?? null;
 
+        // Telefone usado para agrupar/exibir a conversa no Inbox.
+        // Se já há um paciente identificado, usa o telefone real dele para que
+        // todas as mensagens (vindas de @c.us ou @lid) fiquem na mesma conversa.
+        let resolvedPhone = existing?.phone ?? phone;
+
         // Para contatos LID não identificados: tenta buscar o telefone real via WAHA (não-bloqueante)
-        let resolvedPhone = phone;
         if (!existing && !fromMe && rawChatId.endsWith("@lid")) {
           try {
             const realDigits = await wahaGetContactPhone(tenant.id, rawChatId);
@@ -112,6 +116,7 @@ export async function POST(req: Request) {
               if (byRealPhone) {
                 existing = byRealPhone;
                 patientId = byRealPhone.id;
+                resolvedPhone = byRealPhone.phone;
                 // Vincula o JID LID ao paciente encontrado
                 await prisma.patient.update({
                   where: { id: byRealPhone.id },
