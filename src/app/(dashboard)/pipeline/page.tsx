@@ -91,15 +91,28 @@ function channelStyle(channel: string | null) {
 
 const CUSTOM_POSITIONS_KEY = "nutrix_custom_positions";
 
-function loadCustomPositions(): Record<string, string> {
+// Guarda também o stage do paciente no momento em que foi movido para a coluna
+// customizada — se o stage mudar depois (automação do Pipeline), a posição
+// customizada é descartada e o card volta a seguir o stage atual.
+type CustomPosition = { col: string; stage: string };
+
+function loadCustomPositions(): Record<string, CustomPosition> {
   try {
     const saved = localStorage.getItem(CUSTOM_POSITIONS_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Record<string, string | CustomPosition>;
+      const migrated: Record<string, CustomPosition> = {};
+      for (const [pid, val] of Object.entries(parsed)) {
+        // Migra formato antigo (Record<string, string>): stage vazio é preenchido no próximo fetch
+        migrated[pid] = typeof val === "string" ? { col: val, stage: "" } : val;
+      }
+      return migrated;
+    }
   } catch {}
   return {};
 }
 
-function saveCustomPositions(positions: Record<string, string>) {
+function saveCustomPositions(positions: Record<string, CustomPosition>) {
   localStorage.setItem(CUSTOM_POSITIONS_KEY, JSON.stringify(positions));
 }
 
@@ -400,7 +413,7 @@ export default function PipelinePage() {
   const [showSettings, setShowSettings] = useState(false);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [activeChannelFilter, setActiveChannelFilter] = useState<string | null>(null);
-  const [customPositions, setCustomPositions] = useState<Record<string, string>>({});
+  const [customPositions, setCustomPositions] = useState<Record<string, CustomPosition>>({});
   const dragPatientId = useRef<string | null>(null);
 
   // Load column config and custom positions from localStorage
@@ -415,8 +428,29 @@ export default function PipelinePage() {
     params.set("includeLeads", "true");
     const res = await fetch(`/api/patients?${params}`);
     if (res.ok) {
-      const data = await res.json();
+      const data: Patient[] = await res.json();
       setPatients(data);
+
+      // Reconcilia posições customizadas: se o stage do paciente mudou desde que
+      // foi colocado na coluna customizada (ex: automação do Pipeline avançou o
+      // estágio), remove a posição customizada para o card seguir o novo stage.
+      setCustomPositions((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const p of data) {
+          const cp = next[p.id];
+          if (!cp) continue;
+          if (!cp.stage) {
+            next[p.id] = { ...cp, stage: p.stage };
+            changed = true;
+          } else if (cp.stage !== p.stage) {
+            delete next[p.id];
+            changed = true;
+          }
+        }
+        if (changed) saveCustomPositions(next);
+        return changed ? next : prev;
+      });
     }
     setLoading(false);
   }, [search]);
@@ -461,10 +495,10 @@ export default function PipelinePage() {
 
     if (col.isCustom) {
       // Custom column: update custom position in localStorage
-      const prevCustomKey = customPositions[patientId];
+      const prevCustomKey = customPositions[patientId]?.col;
       if (prevCustomKey === colKey) return;
 
-      const newPositions = { ...customPositions, [patientId]: colKey };
+      const newPositions = { ...customPositions, [patientId]: { col: colKey, stage: patient.stage } };
       setCustomPositions(newPositions);
       saveCustomPositions(newPositions);
       toast({ title: `${patient.name} movido para ${col.label}`, variant: "success" });
@@ -511,9 +545,9 @@ export default function PipelinePage() {
     saveColumns(cols);
     // Clean up custom positions for deleted custom columns
     const existingCustomKeys = new Set(cols.filter((c) => c.isCustom).map((c) => c.key));
-    const cleanPositions: Record<string, string> = {};
-    for (const [pid, key] of Object.entries(customPositions)) {
-      if (existingCustomKeys.has(key)) cleanPositions[pid] = key;
+    const cleanPositions: Record<string, CustomPosition> = {};
+    for (const [pid, pos] of Object.entries(customPositions)) {
+      if (existingCustomKeys.has(pos.col)) cleanPositions[pid] = pos;
     }
     setCustomPositions(cleanPositions);
     saveCustomPositions(cleanPositions);
@@ -526,8 +560,8 @@ export default function PipelinePage() {
   const grouped = columns.reduce(
     (acc, col) => {
       if (col.isCustom) {
-        // Custom column: patients whose customPositions[id] === col.key
-        acc[col.key] = filteredPatients.filter((p) => customPositions[p.id] === col.key);
+        // Custom column: patients whose customPositions[id].col === col.key
+        acc[col.key] = filteredPatients.filter((p) => customPositions[p.id]?.col === col.key);
       } else {
         // Standard column: patients in this stage AND not in a custom column
         // REACTIVATED patients are shown alongside ACTIVE (same column)
