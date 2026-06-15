@@ -70,6 +70,11 @@ type PatientDetail = {
     status: string;
     sentAt: string;
   }[];
+  followUpLogs: {
+    id: string;
+    contactedAt: string;
+    notes: string | null;
+  }[];
 };
 
 export default function PatientDetailPage() {
@@ -79,7 +84,7 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"appointments" | "payments" | "whatsapp">("appointments");
+  const [tab, setTab] = useState<"appointments" | "payments" | "whatsapp" | "contacts">("appointments");
   const [editForm, setEditForm] = useState({
     name: "",
     cpf: "",
@@ -271,6 +276,7 @@ export default function PatientDetailPage() {
           { key: "appointments" as const, label: "Consultas", filledIcon: "calendar" as const, variant: "cyan" as const },
           { key: "payments" as const, label: "Pagamentos", filledIcon: "dollar" as const, variant: "emerald" as const },
           { key: "whatsapp" as const, label: "WhatsApp", filledIcon: "message" as const, variant: "green" as const },
+          { key: "contacts" as const, label: "Histórico de Contatos", filledIcon: "clipboard" as const, variant: "amber" as const },
         ].map((t) => (
           <button
             key={t.key}
@@ -367,6 +373,28 @@ export default function PatientDetailPage() {
                   </span>
                 </div>
                 <p className="text-sm text-[#a1a1a1]">{log.messageText}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {tab === "contacts" && (
+        <div className="space-y-2">
+          {patient.followUpLogs.length === 0 ? (
+            <p className="text-sm text-[#666] text-center py-8">Nenhum contato registrado</p>
+          ) : (
+            patient.followUpLogs.map((log) => (
+              <div
+                key={log.id}
+                className="px-4 py-3 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-[#666]">
+                    {formatDateTime(log.contactedAt)}
+                  </span>
+                </div>
+                <p className="text-sm text-[#a1a1a1]">{log.notes || "Sem observações"}</p>
               </div>
             ))
           )}
