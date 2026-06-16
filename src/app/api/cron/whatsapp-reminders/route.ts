@@ -8,6 +8,10 @@ function authorizeCron(req: Request): boolean {
   return secret === process.env.CRON_SECRET;
 }
 
+function isProfessionalPlan(tenant: { subscription?: { plan?: { name: string } | null } | null }): boolean {
+  return (tenant.subscription?.plan?.name ?? "").toLowerCase().includes("professional");
+}
+
 async function sendTemplateMessage(
   tenantId: string,
   patientId: string,
@@ -171,13 +175,14 @@ async function sendPostConsultation() {
     },
     include: {
       patient: { select: { id: true, name: true, phone: true } },
-      tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true } },
+      tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true, subscription: { select: { plan: { select: { name: true } } } } } },
     },
   });
 
   let sent = 0;
   for (const apt of appointments) {
     if (apt.tenant.whatsappStatus !== "CONNECTED") continue;
+    if (!isProfessionalPlan(apt.tenant)) continue;
 
     const template = await prisma.messageTemplate.findUnique({
       where: { tenantId_type: { tenantId: apt.tenantId, type: "POST_CONSULTATION" } },
@@ -272,12 +277,14 @@ async function sendReactivation() {
         ],
       },
       include: {
-        tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true } },
+        tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true, subscription: { select: { plan: { select: { name: true } } } } } },
       },
     });
 
     for (const patient of patients) {
       if (patient.tenant.whatsappStatus !== "CONNECTED") continue;
+      // Reativação de 60 e 90 dias é exclusiva do plano Professional
+      if (range.days > 30 && !isProfessionalPlan(patient.tenant)) continue;
 
       const template = await prisma.messageTemplate.findUnique({
         where: { tenantId_type: { tenantId: patient.tenantId, type: range.type } },

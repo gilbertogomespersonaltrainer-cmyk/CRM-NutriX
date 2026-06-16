@@ -118,8 +118,10 @@ function downloadFile(content: string, filename: string, mime: string) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 // Advanced reports require Professional plan
-const ADVANCED_REPORTS: ReportType[] = ["financial", "defaulters"];
-const BASIC_REPORTS: ReportType[] = ["appointments", "patients"];
+// Relatórios completamente bloqueados para Essential (sem visualização)
+const ADVANCED_REPORTS: ReportType[] = ["defaulters"];
+// Relatórios visíveis para Essential mas sem exportação
+const EXPORT_ONLY_PRO: ReportType[] = ["financial"];
 
 function isProfessional(plan?: string): boolean {
   if (!plan) return false;
@@ -233,10 +235,12 @@ export default function RelatoriosPage() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  const tabs: { key: ReportType; label: string; icon: "dollar" | "alert" | "calendar" | "users"; advanced: boolean }[] = [
+  // advanced=true → aba bloqueada para Essential (sem acesso)
+  // exportLocked=true → Essential pode visualizar mas não exportar
+  const tabs: { key: ReportType; label: string; icon: "dollar" | "alert" | "calendar" | "users"; advanced: boolean; exportLocked?: boolean }[] = [
     { key: "appointments", label: "Consultas", icon: "calendar", advanced: false },
     { key: "patients", label: "Pacientes", icon: "users", advanced: false },
-    { key: "financial", label: "Financeiro", icon: "dollar", advanced: true },
+    { key: "financial", label: "Financeiro", icon: "dollar", advanced: false, exportLocked: true },
     { key: "defaulters", label: "Inadimplentes", icon: "alert", advanced: true },
   ];
 
@@ -249,15 +253,15 @@ export default function RelatoriosPage() {
           <p className="text-sm text-[#666] mt-1">Análise completa do seu consultório</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={exportCSV} disabled={!data || loading || (ADVANCED_REPORTS.includes(reportType) && !isPro)}>
+          <Button variant="secondary" size="sm" onClick={exportCSV} disabled={!data || loading || (ADVANCED_REPORTS.includes(reportType) && !isPro) || (EXPORT_ONLY_PRO.includes(reportType) && !isPro)}>
             <Download className="h-3.5 w-3.5" />
             CSV
           </Button>
-          <Button variant="secondary" size="sm" onClick={exportXML} disabled={!data || loading || (ADVANCED_REPORTS.includes(reportType) && !isPro)}>
+          <Button variant="secondary" size="sm" onClick={exportXML} disabled={!data || loading || (ADVANCED_REPORTS.includes(reportType) && !isPro) || (EXPORT_ONLY_PRO.includes(reportType) && !isPro)}>
             <Download className="h-3.5 w-3.5" />
             XML
           </Button>
-          <Button variant="secondary" size="sm" onClick={handlePrint} disabled={!data || loading || (ADVANCED_REPORTS.includes(reportType) && !isPro)}>
+          <Button variant="secondary" size="sm" onClick={handlePrint} disabled={!data || loading || (ADVANCED_REPORTS.includes(reportType) && !isPro) || (EXPORT_ONLY_PRO.includes(reportType) && !isPro)}>
             <Printer className="h-3.5 w-3.5" />
             Imprimir
           </Button>
@@ -354,6 +358,11 @@ export default function RelatoriosPage() {
                   <GlassIcon icon={t.icon} size="sm" className={reportType !== t.key || locked ? "opacity-40" : ""} />
                   {t.label}
                   {locked && <Lock className="h-3 w-3 text-[#f59e0b] ml-0.5" />}
+                  {t.exportLocked && !isPro && !locked && (
+                    <span className="flex items-center gap-0.5 text-[9px] font-bold text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-1 py-0.5 rounded ml-0.5">
+                      <Lock className="h-2.5 w-2.5" />export
+                    </span>
+                  )}
                 </button>
               </div>
             );
