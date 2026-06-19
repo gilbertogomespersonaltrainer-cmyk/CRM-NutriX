@@ -120,26 +120,65 @@ export async function wahaStopSession(tenantId: string) {
   } catch { /* ignora */ }
 }
 
+// Extrai dígitos de um campo de telefone candidato — rejeita se for LID (>13 dígitos)
+function extractRealPhone(raw: unknown): string | null {
+  if (!raw || typeof raw !== "string") return null;
+  const digits = raw.replace(/\D/g, "");
+  if (!digits || digits.length > 13) return null; // LID tem >13 dígitos
+  return digits;
+}
+
 // Tenta buscar o número de telefone real de um contato LID via API do WAHA.
+// Tenta múltiplos endpoints pois o formato varia entre versões do WAHA/Evolution.
 // Retorna apenas os dígitos (sem DDI) ou null se não conseguir.
 export async function wahaGetContactPhone(tenantId: string, chatId: string): Promise<string | null> {
   const name = wahaSessionName(tenantId);
+
+  // Estratégia 1: GET /contacts?contactId= (WAHA padrão)
   try {
     const res = await wahaFetch(
       `${WAHA_URL}/api/${name}/contacts?contactId=${encodeURIComponent(chatId)}`,
       { headers: wahaHeaders() },
-      3000
+      4000
     );
-    if (!res.ok) return null;
-    const data = await res.json();
-    // WAHA pode retornar um array ou objeto; extrai o campo number/phone
-    const contact = Array.isArray(data) ? data[0] : data;
-    const raw: string | null = contact?.number ?? contact?.phone ?? null;
-    if (!raw) return null;
-    return raw.replace(/\D/g, "") || null;
-  } catch {
-    return null;
-  }
+    if (res.ok) {
+      const data = await res.json();
+      const contact = Array.isArray(data) ? data[0] : data;
+      const phone = extractRealPhone(contact?.number)
+        ?? extractRealPhone(contact?.phone)
+        ?? extractRealPhone(contact?.id?.user)
+        ?? extractRealPhone(contact?.remoteJid?.replace(/@\S+/g, ""));
+      if (phone) return phone;
+    }
+  } catch { /* tenta próximo */ }
+
+  // Estratégia 2: GET /contacts/{chatId} (path param — algumas versões WAHA/Evolution)
+  try {
+    const res = await wahaFetch(
+      `${WAHA_URL}/api/${name}/contacts/${encodeURIComponent(chatId)}`,
+      { headers: wahaHeaders() },
+      4000
+    );
+    if (res.ok) {
+      const contact = await res.json();
+      const phone = extractRealPhone(contact?.number)
+        ?? extractRealPhone(contact?.phone)
+        ?? extractRealPhone(contact?.id?.user);
+      if (phone) return phone;
+    }
+  } catch { /* tenta próximo */ }
+
+  // Estratégia 3: GET /contacts/check-exists?phone= — inverte: extrai dígitos do LID e verifica
+  // (útil quando o LID contém o número real com DDI mas sem o @lid)
+  try {
+    const lidDigits = chatId.replace(/@\S+/g, "").replace(/\D/g, "");
+    if (lidDigits.length <= 13) {
+      // Não é um LID real, já é um número — retorna direto
+      return lidDigits;
+    }
+  } catch { /* ignora */ }
+
+  return null;
 }
 
 export async function wahaSendText(

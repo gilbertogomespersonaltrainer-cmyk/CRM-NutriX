@@ -61,6 +61,24 @@ export async function POST(req: Request) {
       const messageBody: string = payload.body ?? payload.text ?? "";
       const contactName: string | null =
         payload._data?.notifyName ?? payload.notifyName ?? payload.pushName ?? null;
+
+      // Tenta extrair o telefone real de campos extras do payload (WAHA/Evolution enviam em locais variados)
+      // Só aceita se tiver ≤13 dígitos (LID tem mais)
+      const payloadRealPhone: string | null = (() => {
+        const candidates = [
+          payload.sender,
+          payload._data?.id?.user,
+          payload.key?.participant,
+          payload._data?.author,
+          payload.author,
+        ];
+        for (const c of candidates) {
+          if (!c || typeof c !== "string") continue;
+          const d = c.replace(/@\S+/g, "").replace(/\D/g, "");
+          if (d && d.length <= 13 && d !== phoneDigits) return d;
+        }
+        return null;
+      })();
       const timestamp = payload.timestamp
         ? new Date(payload.timestamp * 1000)
         : new Date();
@@ -103,10 +121,11 @@ export async function POST(req: Request) {
         // todas as mensagens (vindas de @c.us ou @lid) fiquem na mesma conversa.
         let resolvedPhone = existing?.phone ?? phone;
 
-        // Para contatos LID não identificados: tenta buscar o telefone real via WAHA (não-bloqueante)
-        if (!existing && !fromMe && rawChatId.endsWith("@lid")) {
+        // Para contatos LID não identificados: resolve o telefone real
+        // Ordem: 1) campos extras do payload, 2) API do WAHA
+        if (!existing && rawChatId.endsWith("@lid")) {
           try {
-            const realDigits = await wahaGetContactPhone(tenant.id, rawChatId);
+            const realDigits = payloadRealPhone ?? await wahaGetContactPhone(tenant.id, rawChatId);
             if (realDigits) {
               const realPhone = realDigits.length <= 11 ? `55${realDigits}` : realDigits;
               // Verifica se esse telefone real já está cadastrado
@@ -117,13 +136,12 @@ export async function POST(req: Request) {
                 existing = byRealPhone;
                 patientId = byRealPhone.id;
                 resolvedPhone = byRealPhone.phone;
-                // Vincula o JID LID ao paciente encontrado
                 await prisma.patient.update({
                   where: { id: byRealPhone.id },
                   data: { whatsappChatId: rawChatId },
                 });
               } else {
-                resolvedPhone = realPhone; // usa o telefone real ao criar o lead
+                resolvedPhone = realPhone;
               }
             }
           } catch { /* não-bloqueante */ }
