@@ -83,10 +83,10 @@ function getDisplayName(conv: Conversation) {
 }
 
 function getDisplaySubtitle(conv: Conversation) {
-  // Para contatos LID: mostra o telefone real do paciente vinculado quando disponível
+  // Para contatos LID: mostra o telefone real do paciente vinculado, desde que não seja também um LID
   if (isLidNumber(conv.phone)) {
-    if (conv.patientPhone) return formatPhone(conv.patientPhone);
-    return "WhatsApp";
+    if (conv.patientPhone && !isLidNumber(conv.patientPhone)) return formatPhone(conv.patientPhone);
+    return "Número não disponível";
   }
   // Para números normais: mostra o telefone se tiver nome (paciente ou pushName)
   if (conv.patientName || conv.name) return formatPhone(conv.phone);
