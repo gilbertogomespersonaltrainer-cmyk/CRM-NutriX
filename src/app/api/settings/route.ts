@@ -28,9 +28,11 @@ export async function GET() {
       },
     });
     // Expõe apenas se está conectado (não expõe o token em si)
+    // googleCalendarError: tinha token mas googleCalendarEnabled foi desativado por falha de renovação
     const result = {
       ...tenant,
-      googleCalendarConnected: !!(tenant?.googleRefreshToken),
+      googleCalendarConnected: !!(tenant?.googleRefreshToken && tenant?.googleCalendarEnabled),
+      googleCalendarError: !!(tenant?.googleRefreshToken && !tenant?.googleCalendarEnabled),
       googleRefreshToken: undefined, // nunca expõe o token ao frontend
     };
     return NextResponse.json(result);

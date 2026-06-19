@@ -40,6 +40,7 @@ type TenantSettings = {
   appointmentTypes: string[];
   googleCalendarEnabled: boolean;
   googleCalendarConnected: boolean;
+  googleCalendarError: boolean;
   googleCalendarId: string | null;
 };
 
@@ -865,14 +866,16 @@ export default function ConfiguracoesPage() {
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
                     settings.googleCalendarConnected
                       ? "bg-[#22c55e]/10 border-[#22c55e]/20"
+                      : settings.googleCalendarError
+                      ? "bg-red-500/10 border-red-500/20"
                       : "bg-[#111] border-[#222]"
                   }`}>
-                    <Calendar className={`h-5 w-5 ${settings.googleCalendarConnected ? "text-[#4ade80]" : "text-[#555]"}`} strokeWidth={1.5} />
+                    <Calendar className={`h-5 w-5 ${settings.googleCalendarConnected ? "text-[#4ade80]" : settings.googleCalendarError ? "text-red-400" : "text-[#555]"}`} strokeWidth={1.5} />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-white">Google Agenda</p>
-                    <p className="text-xs text-[#666] mt-0.5">
-                      {settings.googleCalendarConnected ? "Conectado e sincronizando" : "Não conectado"}
+                    <p className={`text-xs mt-0.5 ${settings.googleCalendarConnected ? "text-[#666]" : settings.googleCalendarError ? "text-red-400" : "text-[#666]"}`}>
+                      {settings.googleCalendarConnected ? "Conectado e sincronizando" : settings.googleCalendarError ? "Conexão interrompida — reconecte" : "Não conectado"}
                     </p>
                   </div>
                 </div>
@@ -887,7 +890,7 @@ export default function ConfiguracoesPage() {
                       try {
                         const res = await fetch("/api/google/disconnect", { method: "DELETE" });
                         if (res.ok) {
-                          setSettings(s => s ? { ...s, googleCalendarConnected: false, googleCalendarEnabled: false } : s);
+                          setSettings(s => s ? { ...s, googleCalendarConnected: false, googleCalendarEnabled: false, googleCalendarError: false } : s);
                           toast({ title: "Google Agenda desconectado", variant: "success" });
                         }
                       } finally {
@@ -903,9 +906,9 @@ export default function ConfiguracoesPage() {
                   </Button>
                 ) : (
                   <a href="/api/google/auth">
-                    <Button>
+                    <Button variant={settings.googleCalendarError ? "danger" : "default"}>
                       <ExternalLink className="h-4 w-4" />
-                      Conectar Google Agenda
+                      {settings.googleCalendarError ? "Reconectar Google Agenda" : "Conectar Google Agenda"}
                     </Button>
                   </a>
                 )}
@@ -923,8 +926,24 @@ export default function ConfiguracoesPage() {
             </CardContent>
           </Card>
 
+          {/* Banner de erro de conexão */}
+          {settings.googleCalendarError && (
+            <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20 flex items-start gap-3">
+              <div className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-red-500/10 flex items-center justify-center">
+                <span className="text-red-400 text-xs font-bold">!</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-400">Conexão com o Google Agenda interrompida</p>
+                <p className="text-xs text-[#666] mt-1">
+                  O NutriX não conseguiu renovar o acesso ao Google Agenda. Os agendamentos criados durante esse período não foram sincronizados.
+                  Clique em <span className="text-white font-medium">Reconectar Google Agenda</span> para restaurar a sincronização.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Instruções */}
-          {!settings.googleCalendarConnected && (
+          {!settings.googleCalendarConnected && !settings.googleCalendarError && (
             <div className="p-4 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] space-y-3">
               <p className="text-xs font-semibold text-[#666] uppercase tracking-wider">Como configurar</p>
               <ol className="space-y-2 text-xs text-[#666]">

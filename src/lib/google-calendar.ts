@@ -124,6 +124,11 @@ async function calendarRequest(
     return await doRequest(accessToken);
   } catch (err) {
     console.error(`[GoogleCalendar] Falha ao renovar token do tenant ${tenantId}:`, err);
+    // Marca como desconectado para alertar o nutricionista na interface
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: { googleCalendarEnabled: false, googleAccessToken: null },
+    }).catch(() => {});
     return null;
   }
 }
