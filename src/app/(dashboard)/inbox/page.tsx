@@ -109,6 +109,7 @@ export default function InboxPage() {
   const [linkSearch, setLinkSearch] = useState("");
   const [linkPatients, setLinkPatients] = useState<{id:string;name:string;phone:string}[]>([]);
   const [linking, setLinking] = useState(false);
+  const [fixingLid, setFixingLid] = useState(false);
   // controla se é o primeiro carregamento (mostra spinner) ou refresh silencioso
   const initialConvsLoad = useRef(true);
   const initialMsgsLoad = useRef<string | null>(null); // phone da conversa carregando pela 1ª vez
@@ -274,7 +275,37 @@ export default function InboxPage() {
       <div className="w-[320px] flex-shrink-0 border-r border-[#1a1a1a] flex flex-col bg-[#0a0a0a]">
         {/* Header */}
         <div className="p-4 border-b border-[#1a1a1a]">
-          <h1 className="font-outfit text-lg font-semibold text-white mb-3">Inbox</h1>
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="font-outfit text-lg font-semibold text-white">Inbox</h1>
+            {conversations.some(c => isLidNumber(c.phone)) && (
+              <button
+                onClick={async () => {
+                  setFixingLid(true);
+                  try {
+                    const res = await fetch("/api/inbox/fix-lid-contacts", { method: "POST" });
+                    const data = await res.json();
+                    if (res.ok) {
+                      toast({ title: data.message, variant: "success" });
+                      fetchConversations();
+                    } else {
+                      toast({ title: data.error || "Erro ao corrigir contatos", variant: "error" });
+                    }
+                  } finally {
+                    setFixingLid(false);
+                  }
+                }}
+                disabled={fixingLid}
+                className="flex items-center gap-1.5 text-xs text-amber-400 border border-amber-400/20 bg-amber-400/5 rounded-lg px-2.5 py-1.5 hover:bg-amber-400/10 transition-colors disabled:opacity-50"
+                title="Corrigir números de telefone não identificados"
+              >
+                {fixingLid
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <span>⚠</span>
+                }
+                Corrigir contatos
+              </button>
+            )}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#555]" />
             <input
