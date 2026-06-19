@@ -74,11 +74,11 @@ function formatTimestamp(iso: string) {
 }
 
 function getDisplayName(conv: Conversation) {
-  // Prioridade: nome do paciente cadastrado > nome do WhatsApp (pushName) > número formatado
+  // Prioridade: nome do paciente cadastrado > verificação LID > nome do WhatsApp > número formatado
   if (conv.patientName) return conv.patientName;
-  if (conv.name) return conv.name;
-  // Se for LID (número interno do WhatsApp), mostra "Contato WhatsApp"
+  // LID deve ser verificado antes do conv.name pois o WhatsApp às vezes usa o próprio LID como pushName
   if (isLidNumber(conv.phone)) return "Contato WhatsApp";
+  if (conv.name) return conv.name;
   return formatPhone(conv.phone);
 }
 
