@@ -79,7 +79,8 @@ export default function AgendamentosPage() {
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
   const [form, setForm] = useState({
     patientId: "",
-    scheduledAt: "",
+    date: "",
+    time: "",
     duration: "50",
     notes: "",
     consultationType: "",
@@ -130,15 +131,16 @@ export default function AgendamentosPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const scheduledAt = form.date && form.time ? `${form.date}T${form.time}` : "";
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, duration: parseInt(form.duration) }),
+        body: JSON.stringify({ ...form, scheduledAt, duration: parseInt(form.duration) }),
       });
       if (res.ok) {
         toast({ title: "Agendamento criado!", variant: "success" });
         setShowNew(false);
-        setForm({ patientId: "", scheduledAt: "", duration: "50", notes: "", consultationType: "" });
+        setForm({ patientId: "", date: "", time: "", duration: "50", notes: "", consultationType: "" });
         fetchAppointments();
       } else {
         toast({ title: "Erro ao criar agendamento", variant: "error" });
@@ -465,14 +467,25 @@ export default function AgendamentosPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Data e Hora *</Label>
+                <Label>Data *</Label>
                 <Input
-                  type="datetime-local"
-                  value={form.scheduledAt}
-                  onChange={(e) => setForm((p) => ({ ...p, scheduledAt: e.target.value }))}
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Hora *</Label>
+                <Input
+                  type="time"
+                  value={form.time}
+                  onChange={(e) => setForm((p) => ({ ...p, time: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Duração (min)</Label>
                 <Input
