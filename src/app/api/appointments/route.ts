@@ -113,26 +113,40 @@ export async function POST(req: Request) {
             resolvedChatId = lastInboxMsg?.chatId ?? undefined;
           }
 
-          await evoSendText(tenantId, patient.phone, message, resolvedChatId);
-          await prisma.appointment.update({
-            where: { id: appointment.id },
-            data: { confirmationSent: true },
-          });
-          await prisma.whatsAppLog.create({
-            data: {
-              tenantId,
-              patientId: patient.id,
-              messageType: "CONFIRMATION",
-              phoneNumber: patient.phone,
-              messageText: message,
-              status: "SENT",
-            },
-          });
+          try {
+            await evoSendText(tenantId, patient.phone, message, resolvedChatId);
+            await prisma.appointment.update({
+              where: { id: appointment.id },
+              data: { confirmationSent: true },
+            });
+            await prisma.whatsAppLog.create({
+              data: {
+                tenantId,
+                patientId: patient.id,
+                messageType: "CONFIRMATION",
+                phoneNumber: patient.phone,
+                messageText: message,
+                status: "SENT",
+              },
+            });
+          } catch (sendErr) {
+            console.error("[confirmation-send]", sendErr);
+            await prisma.whatsAppLog.create({
+              data: {
+                tenantId,
+                patientId: patient.id,
+                messageType: "CONFIRMATION",
+                phoneNumber: patient.phone,
+                messageText: message,
+                status: "FAILED",
+                errorMessage: sendErr instanceof Error ? sendErr.message : "Erro desconhecido",
+              },
+            });
+          }
         }
       }
     } catch (err) {
-      // Não bloqueia a criação do agendamento se o envio falhar
-      console.error("[confirmation-send]", err);
+      console.error("[confirmation-send-outer]", err);
     }
 
     // Cria evento no Google Calendar (não-bloqueante — falha silenciosa)
