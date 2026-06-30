@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaGetStatus } from "@/lib/waha";
+import { evoGetStatus } from "@/lib/evolution";
 
 export async function GET() {
   try {
@@ -13,7 +13,7 @@ export async function GET() {
 
     // Se já está conectado no banco, confirma com WAHA
     if (tenant?.whatsappStatus === "CONNECTED") {
-      const wahaStatus = await wahaGetStatus(tenantId);
+      const wahaStatus = await evoGetStatus(tenantId);
       if (wahaStatus === "STOPPED" || wahaStatus === "FAILED") {
         await prisma.tenant.update({
           where: { id: tenantId },
@@ -26,7 +26,7 @@ export async function GET() {
 
     // Se não está conectado, sempre verifica WAHA diretamente
     if (tenant?.whatsappStatus === "CONNECTING" || tenant?.whatsappStatus === "DISCONNECTED") {
-      const wahaStatus = await wahaGetStatus(tenantId);
+      const wahaStatus = await evoGetStatus(tenantId);
 
       if (wahaStatus === "WORKING") {
         await prisma.tenant.update({

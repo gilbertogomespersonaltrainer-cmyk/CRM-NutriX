@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaStopSession } from "@/lib/waha";
+import { evoStopSession } from "@/lib/evolution";
 
 export async function DELETE() {
   try {
     const tenantId = await getTenantId();
 
-    await wahaStopSession(tenantId);
+    await evoStopSession(tenantId);
 
     await prisma.tenant.update({
       where: { id: tenantId },

@@ -1,112 +1,108 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { wahaSessionName, wahaGetContactPhone } from "@/lib/waha";
+import { evoInstanceName, evoGetContactPhone } from "@/lib/evolution";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    // Log completo do payload para debug — remover após diagnóstico
-    console.log("[webhook/waha] FULL_PAYLOAD:", JSON.stringify(body).slice(0, 1200));
+    console.log("[webhook/evo] FULL_PAYLOAD:", JSON.stringify(body).slice(0, 1200));
 
-    const sessionName: string = body.session ?? "";
-    if (!sessionName) return NextResponse.json({ received: true });
+    // Evolution envia: { event: "...", instance: "...", data: {...} }
+    const event: string = (body.event ?? "").toLowerCase();
+    const instanceName: string = body.instance ?? "";
+
+    if (!instanceName) return NextResponse.json({ received: true });
 
     const tenants = await prisma.tenant.findMany({ select: { id: true } });
-    const tenant = tenants.find(t => wahaSessionName(t.id) === sessionName);
+    const tenant = tenants.find(t => evoInstanceName(t.id) === instanceName);
 
     if (!tenant) {
-      console.warn("[webhook/waha] tenant não encontrado para session:", sessionName);
+      console.warn("[webhook/evo] tenant não encontrado para instance:", instanceName);
       return NextResponse.json({ received: true });
     }
 
-    const event: string = (body.event ?? "").toLowerCase();
-    const status: string = body.payload?.status ?? "";
-    console.log("[webhook/waha] event:", event, "status:", status, "tenantId:", tenant.id);
+    console.log("[webhook/evo] event:", event, "tenantId:", tenant.id);
 
-    if (event === "session.status" && status === "WORKING") {
-      await prisma.tenant.update({
-        where: { id: tenant.id },
-        data: { whatsappStatus: "CONNECTED", whatsappConnectedAt: new Date(), whatsappQRCode: null },
-      });
+    // ── Conexão ──────────────────────────────────────────────────────────────
+    if (event === "connection.update") {
+      const state: string = body.data?.state ?? "";
+      if (state === "open") {
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { whatsappStatus: "CONNECTED", whatsappConnectedAt: new Date(), whatsappQRCode: null },
+        });
+      } else if (state === "close" || state === "refused") {
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { whatsappStatus: "DISCONNECTED", whatsappQRCode: null },
+        });
+      } else if (state === "connecting") {
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { whatsappStatus: "CONNECTING" },
+        });
+      }
     }
 
-    if (event === "session.status" && (status === "STOPPED" || status === "FAILED")) {
-      await prisma.tenant.update({
-        where: { id: tenant.id },
-        data: { whatsappStatus: "DISCONNECTED", whatsappQRCode: null },
-      });
+    // ── QR Code ──────────────────────────────────────────────────────────────
+    if (event === "qrcode.updated") {
+      const qr: string = body.data?.qrcode?.base64 ?? body.data?.base64 ?? "";
+      if (qr) {
+        const qrBase64 = qr.startsWith("data:") ? qr : `data:image/png;base64,${qr}`;
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { whatsappQRCode: qrBase64, whatsappStatus: "CONNECTING" },
+        });
+      }
     }
 
-    if (event === "session.status" && status === "SCAN_QR_CODE") {
-      await prisma.tenant.update({
-        where: { id: tenant.id },
-        data: { whatsappStatus: "CONNECTING", whatsappQRCode: null },
-      });
-    }
+    // ── Mensagens ─────────────────────────────────────────────────────────────
+    if (event === "messages.upsert") {
+      const messages = Array.isArray(body.data) ? body.data : [body.data];
 
-    // Mensagem recebida — salva no inbox e cria lead se número desconhecido
-    if (event === "message") {
-      const payload = body.payload ?? {};
-      const fromMe: boolean = payload.fromMe ?? false;
+      for (const msg of messages) {
+        if (!msg) continue;
 
-      // rawChatId = JID original ex: "5511999999999@c.us" ou "123456789@lid"
-      // Guardamos intacto para usar no envio de respostas (especialmente LIDs)
-      const rawChatId: string = payload.from ?? payload.chatId ?? "";
+        const fromMe: boolean = msg.key?.fromMe ?? false;
 
-      // Para grupos ignoramos (chatId termina em @g.us)
-      if (rawChatId.endsWith("@g.us")) return NextResponse.json({ received: true });
+        // JID original — ex: "5511999999999@s.whatsapp.net" ou "228573998764186@lid"
+        const rawChatId: string = msg.key?.remoteJid ?? "";
 
-      // phone = apenas os dígitos do número (para exibição e busca de pacientes)
-      const phoneDigits = rawChatId.replace(/@\S+/g, "").replace(/\D/g, "");
-      const messageBody: string = payload.body ?? payload.text ?? "";
-      const contactName: string | null =
-        payload._data?.notifyName ?? payload.notifyName ?? payload.pushName ?? null;
+        // Ignora grupos
+        if (rawChatId.endsWith("@g.us")) continue;
 
-      // Tenta extrair o telefone real de campos extras do payload (WAHA/Evolution enviam em locais variados)
-      // Só aceita se tiver ≤13 dígitos (LID tem mais)
-      const payloadRealPhone: string | null = (() => {
-        const candidates = [
-          payload.sender,
-          payload._data?.id?.user,
-          payload.key?.participant,
-          payload._data?.author,
-          payload.author,
-        ];
-        for (const c of candidates) {
-          if (!c || typeof c !== "string") continue;
-          const d = c.replace(/@\S+/g, "").replace(/\D/g, "");
-          if (d && d.length <= 13 && d !== phoneDigits) return d;
-        }
-        return null;
-      })();
-      const timestamp = payload.timestamp
-        ? new Date(payload.timestamp * 1000)
-        : new Date();
+        // Dígitos do JID
+        const phoneDigits = rawChatId.replace(/@\S+/g, "").replace(/\D/g, "");
 
-      if (phoneDigits && messageBody) {
-        // Normaliza phone: garante prefixo 55 se tiver tamanho brasileiro (10-11 dígitos sem DDI)
-        const phone = phoneDigits.length <= 11
-          ? `55${phoneDigits}`
-          : phoneDigits;
+        const messageBody: string =
+          msg.message?.conversation ??
+          msg.message?.extendedTextMessage?.text ??
+          msg.message?.imageMessage?.caption ??
+          msg.message?.videoMessage?.caption ??
+          "";
 
-        // Verifica se já existe um paciente com esse número (últimos 10 dígitos)
+        const contactName: string | null =
+          msg.pushName ?? msg.notifyName ?? null;
+
+        const timestamp = msg.messageTimestamp
+          ? new Date(Number(msg.messageTimestamp) * 1000)
+          : new Date();
+
+        if (!phoneDigits || !messageBody) continue;
+
+        const phone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
+
+        // Busca paciente pelo número ou pelo chatId salvo
         let existing = await prisma.patient.findFirst({
-          where: {
-            tenantId: tenant.id,
-            phone: { contains: phone.slice(-10) },
-          },
+          where: { tenantId: tenant.id, phone: { contains: phone.slice(-10) } },
         });
 
-        // Para contas LID (@lid), o "phone" é o LID numérico — não bate com o telefone real.
-        // Tenta encontrar o paciente pelo whatsappChatId salvo anteriormente.
         if (!existing && rawChatId) {
           existing = await prisma.patient.findFirst({
             where: { tenantId: tenant.id, whatsappChatId: rawChatId },
           });
         }
 
-        // Se encontrou paciente e a mensagem é dele (não enviada por mim),
-        // atualiza o whatsappChatId para garantir que envios futuros usem o JID correto.
         if (existing && !fromMe && rawChatId) {
           await prisma.patient.update({
             where: { id: existing.id },
@@ -115,20 +111,14 @@ export async function POST(req: Request) {
         }
 
         let patientId: string | null = existing?.id ?? null;
-
-        // Telefone usado para agrupar/exibir a conversa no Inbox.
-        // Se já há um paciente identificado, usa o telefone real dele para que
-        // todas as mensagens (vindas de @c.us ou @lid) fiquem na mesma conversa.
         let resolvedPhone = existing?.phone ?? phone;
 
-        // Para contatos LID não identificados: resolve o telefone real
-        // Ordem: 1) campos extras do payload, 2) API do WAHA
+        // Para LIDs não identificados: resolve o telefone real via Evolution API
         if (!existing && rawChatId.endsWith("@lid")) {
           try {
-            const realDigits = payloadRealPhone ?? await wahaGetContactPhone(tenant.id, rawChatId);
+            const realDigits = await evoGetContactPhone(tenant.id, rawChatId);
             if (realDigits) {
               const realPhone = realDigits.length <= 11 ? `55${realDigits}` : realDigits;
-              // Verifica se esse telefone real já está cadastrado
               const byRealPhone = await prisma.patient.findFirst({
                 where: { tenantId: tenant.id, phone: { contains: realDigits.slice(-10) } },
               });
@@ -147,14 +137,14 @@ export async function POST(req: Request) {
           } catch { /* não-bloqueante */ }
         }
 
-        // Se não existe e a mensagem é de fora (não enviada por mim), cria Lead
+        // Cria Lead se mensagem externa e contato desconhecido
         if (!existing && !fromMe) {
           const newPatient = await prisma.patient.create({
             data: {
               tenantId: tenant.id,
               name: contactName ?? `Contato ${resolvedPhone}`,
               phone: resolvedPhone,
-              whatsappChatId: rawChatId, // salva JID desde a criação
+              whatsappChatId: rawChatId,
               stage: "LEAD",
               isActive: true,
             },
@@ -166,7 +156,7 @@ export async function POST(req: Request) {
           data: {
             tenantId: tenant.id,
             phone: resolvedPhone,
-            chatId: rawChatId, // JID original — essencial para responder corretamente
+            chatId: rawChatId,
             name: contactName,
             body: messageBody,
             fromMe,
@@ -178,25 +168,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // QR code gerado pelo WAHA — salva no banco para o frontend buscar
-    if (event === "qr") {
-      const qrPayload = body.payload?.qr ?? body.payload ?? null;
-      if (qrPayload) {
-        const qrBase64 = typeof qrPayload === "string"
-          ? (qrPayload.startsWith("data:") ? qrPayload : `data:image/png;base64,${qrPayload}`)
-          : null;
-        if (qrBase64) {
-          await prisma.tenant.update({
-            where: { id: tenant.id },
-            data: { whatsappQRCode: qrBase64, whatsappStatus: "CONNECTING" },
-          });
-        }
-      }
-    }
-
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error("[webhook/waha] erro:", err);
+    console.error("[webhook/evo] erro:", err);
     return NextResponse.json({ error: "Webhook error" }, { status: 500 });
   }
 }

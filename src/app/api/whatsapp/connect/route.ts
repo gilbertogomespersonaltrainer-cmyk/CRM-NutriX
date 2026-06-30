@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaStartSession } from "@/lib/waha";
+import { evoStartSession } from "@/lib/evolution";
 
 export async function POST() {
   try {
@@ -14,7 +14,7 @@ export async function POST() {
     });
 
     // Inicia sessão WAHA (delete + recreate em background)
-    await wahaStartSession(tenantId);
+    await evoStartSession(tenantId);
 
     // Retorna imediatamente — o frontend vai buscar o QR via polling
     return NextResponse.json({ ok: true, qrReady: false });

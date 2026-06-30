@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTenantId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { wahaSessionName } from "@/lib/waha";
+import { evoInstanceName } from "@/lib/evolution";
 
 const WAHA_URL = (process.env.WAHA_URL || "").replace(/\/$/, "");
 const WAHA_API_KEY = process.env.WAHA_API_KEY || "";
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const patientName = searchParams.get("name") || "";
     const doSend = searchParams.get("send") === "true";
-    const session = wahaSessionName(tenantId);
+    const session = evoInstanceName(tenantId);
 
     // Busca paciente pelo nome (parcial)
     const patient = patientName

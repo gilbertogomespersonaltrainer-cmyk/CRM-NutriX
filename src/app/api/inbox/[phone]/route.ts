@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaSendText } from "@/lib/waha";
+import { evoSendText } from "@/lib/evolution";
 
 // GET: busca mensagens de uma conversa e marca como lidas
 export async function GET(req: Request, { params }: { params: Promise<{ phone: string }> }) {
@@ -48,7 +48,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ phone: 
     const chatId = lastMsg?.chatId ?? null;
 
     // Envia via WAHA usando chatId original se disponível, senão usa phone
-    await wahaSendText(tenantId, phone, body.trim(), chatId ?? undefined);
+    await evoSendText(tenantId, phone, body.trim(), chatId ?? undefined);
 
     // Salva no inbox
     const msg = await prisma.inboxMessage.create({

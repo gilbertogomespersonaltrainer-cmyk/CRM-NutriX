@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaSendText } from "@/lib/waha";
+import { evoSendText } from "@/lib/evolution";
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      await wahaSendText(tenantId, body.phone, body.message);
+      await evoSendText(tenantId, body.phone, body.message);
 
       await prisma.whatsAppLog.create({
         data: {

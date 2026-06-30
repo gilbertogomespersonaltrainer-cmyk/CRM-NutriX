@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaSendText } from "@/lib/waha";
+import { evoSendText } from "@/lib/evolution";
 import { replaceTemplateVars } from "@/lib/templates";
 
 const DELAY_MS = 1500; // 1.5s entre cada mensagem para evitar banimento
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       });
 
       try {
-        await wahaSendText(tenantId, patient.phone, personalizedMessage, patient.whatsappChatId ?? undefined);
+        await evoSendText(tenantId, patient.phone, personalizedMessage, patient.whatsappChatId ?? undefined);
         await prisma.whatsAppLog.create({
           data: {
             tenantId,

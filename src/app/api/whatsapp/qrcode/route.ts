@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaGetQRCode } from "@/lib/waha";
+import { evoGetQRCode } from "@/lib/evolution";
 
 export async function GET() {
   try {
@@ -16,7 +16,7 @@ export async function GET() {
     }
 
     if (tenant?.whatsappStatus === "CONNECTING") {
-      const base64 = await wahaGetQRCode(tenantId);
+      const base64 = await evoGetQRCode(tenantId);
       if (base64) {
         await prisma.tenant.update({ where: { id: tenantId }, data: { whatsappQRCode: base64 } });
         return NextResponse.json({ base64, status: "CONNECTING" });

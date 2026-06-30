@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaGetContactPhone } from "@/lib/waha";
+import { evoGetContactPhone } from "@/lib/evolution";
 
 // Retorna true se o valor parece ser um LID (>13 dígitos numéricos)
 function isLid(phone: string): boolean {
@@ -30,7 +30,7 @@ export async function POST() {
       const chatId = patient.whatsappChatId;
       if (!chatId) { failed++; continue; }
 
-      const realDigits = await wahaGetContactPhone(tenantId, chatId);
+      const realDigits = await evoGetContactPhone(tenantId, chatId);
       if (!realDigits) { failed++; continue; }
 
       const realPhone = realDigits.length <= 11 ? `55${realDigits}` : realDigits;

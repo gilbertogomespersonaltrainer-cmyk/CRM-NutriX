@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
-import { wahaSendText } from "@/lib/waha";
+import { evoSendText } from "@/lib/evolution";
 import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
 import { createCalendarEvent } from "@/lib/google-calendar";
 
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
             resolvedChatId = lastInboxMsg?.chatId ?? undefined;
           }
 
-          await wahaSendText(tenantId, patient.phone, message, resolvedChatId);
+          await evoSendText(tenantId, patient.phone, message, resolvedChatId);
           await prisma.appointment.update({
             where: { id: appointment.id },
             data: { confirmationSent: true },

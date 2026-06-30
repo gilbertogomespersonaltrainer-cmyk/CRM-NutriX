@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
 import { getTenantId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { wahaGetStatus, wahaSessionName } from "@/lib/waha";
+import { evoGetStatus, evoInstanceName } from "@/lib/evolution";
 
 export async function GET() {
   try {
     const tenantId = await getTenantId();
-    const sessionName = wahaSessionName(tenantId);
+    const sessionName = evoInstanceName(tenantId);
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { whatsappStatus: true, whatsappConnectedAt: true },
     });
 
-    const wahaStatus = await wahaGetStatus(tenantId);
+    const wahaStatus = await evoGetStatus(tenantId);
 
     return NextResponse.json({
       tenantId,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { wahaSendText } from "@/lib/waha";
+import { evoSendText } from "@/lib/evolution";
 import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
 
 export async function GET(req: Request) {
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
         });
         resolvedChatId = lastInboxMsg?.chatId ?? undefined;
       }
-      await wahaSendText(apt.tenantId, apt.patient.phone, message, resolvedChatId);
+      await evoSendText(apt.tenantId, apt.patient.phone, message, resolvedChatId);
 
       await prisma.appointment.update({
         where: { id: apt.id },

@@ -16,12 +16,12 @@ async function wahaFetch(url: string, options: RequestInit = {}, timeoutMs = 600
   }
 }
 
-export function wahaSessionName(tenantId: string) {
+export function evoInstanceName(tenantId: string) {
   return `nx_${tenantId.replace(/-/g, "").slice(0, 20)}`;
 }
 
-export async function wahaStartSession(tenantId: string) {
-  const name = wahaSessionName(tenantId);
+export async function evoStartSession(tenantId: string) {
+  const name = evoInstanceName(tenantId);
 
   // Sequência de limpeza completa: stop → logout → delete
   // Logout remove as chaves de sessão do WhatsApp, evitando estado corrompido
@@ -72,8 +72,8 @@ export async function wahaStartSession(tenantId: string) {
   } catch { /* timeout — WAHA iniciou mas demorou a responder */ }
 }
 
-export async function wahaGetQRCode(tenantId: string): Promise<string | null> {
-  const name = wahaSessionName(tenantId);
+export async function evoGetQRCode(tenantId: string): Promise<string | null> {
+  const name = evoInstanceName(tenantId);
   let res: Response;
   try {
     res = await wahaFetch(`${WAHA_URL}/api/${name}/auth/qr`, { headers: wahaHeaders() });
@@ -100,8 +100,8 @@ export async function wahaGetQRCode(tenantId: string): Promise<string | null> {
   }
 }
 
-export async function wahaGetStatus(tenantId: string): Promise<string> {
-  const name = wahaSessionName(tenantId);
+export async function evoGetStatus(tenantId: string): Promise<string> {
+  const name = evoInstanceName(tenantId);
   try {
     const res = await wahaFetch(`${WAHA_URL}/api/sessions/${name}`, { headers: wahaHeaders() });
     if (!res.ok) return "STOPPED";
@@ -113,8 +113,8 @@ export async function wahaGetStatus(tenantId: string): Promise<string> {
   }
 }
 
-export async function wahaStopSession(tenantId: string) {
-  const name = wahaSessionName(tenantId);
+export async function evoStopSession(tenantId: string) {
+  const name = evoInstanceName(tenantId);
   try {
     await wahaFetch(`${WAHA_URL}/api/sessions/${name}/stop`, { method: "POST", headers: wahaHeaders() });
   } catch { /* ignora */ }
@@ -131,8 +131,8 @@ function extractRealPhone(raw: unknown): string | null {
 // Tenta buscar o número de telefone real de um contato LID via API do WAHA.
 // Tenta múltiplos endpoints pois o formato varia entre versões do WAHA/Evolution.
 // Retorna apenas os dígitos (sem DDI) ou null se não conseguir.
-export async function wahaGetContactPhone(tenantId: string, chatId: string): Promise<string | null> {
-  const name = wahaSessionName(tenantId);
+export async function evoGetContactPhone(tenantId: string, chatId: string): Promise<string | null> {
+  const name = evoInstanceName(tenantId);
 
   // Estratégia 1: GET /contacts?contactId= (WAHA padrão)
   try {
@@ -181,13 +181,13 @@ export async function wahaGetContactPhone(tenantId: string, chatId: string): Pro
   return null;
 }
 
-export async function wahaSendText(
+export async function evoSendText(
   tenantId: string,
   phone: string,
   message: string,
   rawChatId?: string  // JID original do WAHA — usa quando disponível para garantir entrega correta
 ) {
-  const name = wahaSessionName(tenantId);
+  const name = evoInstanceName(tenantId);
 
   // Usa o chatId original se disponível (resolve problemas com LIDs e formatos não-padrão)
   // Caso contrário, reconstrói a partir do phone

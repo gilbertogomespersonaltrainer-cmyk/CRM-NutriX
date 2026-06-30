@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { wahaSendText } from "@/lib/waha";
+import { evoSendText } from "@/lib/evolution";
 import { replaceTemplateVars } from "@/lib/templates";
 
 export async function GET(req: Request) {
@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       });
 
       try {
-        await wahaSendText(tenant.id, patient.phone, message);
+        await evoSendText(tenant.id, patient.phone, message);
 
         await prisma.patient.update({
           where: { id: patient.id },

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { wahaSendText } from "@/lib/waha";
+import { evoSendText } from "@/lib/evolution";
 import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
 
 function authorizeCron(req: Request): boolean {
@@ -38,7 +38,7 @@ async function sendTemplateMessage(
       });
       resolvedChatId = lastInboxMsg?.chatId ?? undefined;
     }
-    await wahaSendText(tenantId, phone, message, resolvedChatId);
+    await evoSendText(tenantId, phone, message, resolvedChatId);
     await prisma.whatsAppLog.create({
       data: {
         tenantId,
