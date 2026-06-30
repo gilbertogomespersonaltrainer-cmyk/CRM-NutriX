@@ -3,16 +3,12 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, MessageSquare, Check } from "lucide-react";
 
-const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-
 type Settings = {
   enabled: boolean;
-  dayOfWeek: number;
   daysAfter: number;
   message: string;
 };
@@ -20,7 +16,6 @@ type Settings = {
 export default function PosConsultaPage() {
   const [settings, setSettings] = useState<Settings>({
     enabled: false,
-    dayOfWeek: 1,
     daysAfter: 3,
     message: "",
   });
@@ -31,7 +26,7 @@ export default function PosConsultaPage() {
   useEffect(() => {
     fetch("/api/pos-consulta")
       .then((r) => r.json())
-      .then((data) => setSettings(data))
+      .then((data) => setSettings({ enabled: data.enabled, daysAfter: data.daysAfter, message: data.message }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -47,7 +42,10 @@ export default function PosConsultaPage() {
     setTimeout(() => setSaved(false), 2500);
   }
 
-  const preview = settings.message.replace(/\{nome_paciente\}/g, "Maria");
+  const preview = settings.message
+    .replace(/\{nome_paciente\}/g, "Maria")
+    .replace(/\{nome_nutricionista\}/g, "Dra. Ana")
+    .replace(/\{nome_clinica\}/g, "Clínica NutriX");
 
   if (loading) {
     return (
@@ -63,7 +61,7 @@ export default function PosConsultaPage() {
       <div>
         <h1 className="font-outfit text-2xl font-bold text-white">Pós Consulta</h1>
         <p className="text-sm text-[#666] mt-1">
-          Envio automático semanal de mensagem WhatsApp para todos os pacientes ativos em acompanhamento.
+          Envio automático de mensagem WhatsApp após a consulta ser concluída — sem esforço para o nutricionista.
         </p>
       </div>
 
@@ -75,7 +73,7 @@ export default function PosConsultaPage() {
               <p className="text-white font-semibold">Envio automático</p>
               <p className="text-sm text-[#666]">
                 {settings.enabled
-                  ? "Ativo — mensagens serão enviadas automaticamente"
+                  ? "Ativo — mensagem será enviada após cada consulta concluída"
                   : "Inativo — nenhuma mensagem será enviada"}
               </p>
             </div>
@@ -87,58 +85,74 @@ export default function PosConsultaPage() {
         </CardContent>
       </Card>
 
-      {/* Configurações */}
+      {/* Dias após consulta */}
       <Card>
-        <CardContent className="p-6 space-y-6">
-          <h2 className="text-white font-semibold">Configurações de envio</h2>
+        <CardContent className="p-6 space-y-4">
+          <h2 className="text-white font-semibold">Quando enviar</h2>
+          <p className="text-sm text-[#666]">
+            Quantos dias após a consulta ser marcada como <span className="text-white font-medium">Concluída</span> a mensagem deve ser enviada?
+          </p>
 
-          {/* Dia da semana */}
-          <div className="space-y-3">
-            <Label className="text-[#888]">Dia da semana para enviar</Label>
-            <div className="grid grid-cols-7 gap-1.5">
-              {DAYS.map((day, i) => (
-                <button
-                  key={day}
-                  onClick={() => setSettings((s) => ({ ...s, dayOfWeek: i }))}
-                  className={`py-2 rounded-lg text-xs font-semibold transition-all ${
-                    settings.dayOfWeek === i
-                      ? "bg-[#22c55e] text-black"
-                      : "bg-[#1a1a1a] text-[#666] hover:text-white border border-[#2a2a2a]"
-                  }`}
-                >
-                  {day.slice(0, 3)}
-                </button>
-              ))}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSettings(s => ({ ...s, daysAfter: Math.max(1, s.daysAfter - 1) }))}
+                className="w-9 h-9 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-white text-lg font-bold hover:border-[#22c55e]/40 transition-colors flex items-center justify-center"
+              >−</button>
+              <div className="w-16 text-center">
+                <span className="text-3xl font-bold text-[#22c55e]">{settings.daysAfter}</span>
+                <p className="text-xs text-[#555] mt-0.5">{settings.daysAfter === 1 ? "dia" : "dias"}</p>
+              </div>
+              <button
+                onClick={() => setSettings(s => ({ ...s, daysAfter: Math.min(30, s.daysAfter + 1) }))}
+                className="w-9 h-9 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-white text-lg font-bold hover:border-[#22c55e]/40 transition-colors flex items-center justify-center"
+              >+</button>
             </div>
-            <p className="text-xs text-[#555]">
-              Toda <span className="text-[#22c55e]">{DAYS[settings.dayOfWeek]}</span> o sistema verificará quais pacientes precisam receber a mensagem.
+            <p className="text-sm text-[#555]">
+              após a consulta ser concluída
             </p>
           </div>
 
+          {/* Presets rápidos */}
+          <div className="flex gap-2 flex-wrap">
+            {[1, 2, 3, 5, 7].map(d => (
+              <button
+                key={d}
+                onClick={() => setSettings(s => ({ ...s, daysAfter: d }))}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  settings.daysAfter === d
+                    ? "bg-[#22c55e]/15 border-[#22c55e]/40 text-[#4ade80]"
+                    : "bg-[#1a1a1a] border-[#2a2a2a] text-[#666] hover:text-white"
+                }`}
+              >
+                {d} {d === 1 ? "dia" : "dias"}
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
       {/* Mensagem */}
       <Card>
         <CardContent className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-white font-semibold">Mensagem</h2>
-            <span className="text-xs text-[#555] bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-1 rounded-md font-mono">
-              {"{nome_paciente}"}
-            </span>
+            <div className="flex gap-2 flex-wrap">
+              {["{nome_paciente}", "{nome_nutricionista}", "{nome_clinica}"].map(v => (
+                <span key={v} className="text-xs text-[#555] bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-1 rounded-md font-mono">
+                  {v}
+                </span>
+              ))}
+            </div>
           </div>
 
           <Textarea
             value={settings.message}
             onChange={(e) => setSettings((s) => ({ ...s, message: e.target.value }))}
-            rows={4}
-            placeholder="Digite a mensagem..."
+            rows={5}
+            placeholder="Ex: Olá {nome_paciente}! Passando para saber como você está se sentindo após nossa consulta. Está conseguindo seguir as orientações? 😊"
             className="resize-none"
           />
-
-          <p className="text-xs text-[#555]">
-            Use <span className="text-[#22c55e] font-mono">{"{nome_paciente}"}</span> para inserir o primeiro nome do paciente automaticamente.
-          </p>
 
           {/* Preview */}
           {settings.message && (
@@ -173,11 +187,10 @@ export default function PosConsultaPage() {
       {/* Info */}
       <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
         <p className="text-xs text-[#555] leading-relaxed">
-          <span className="text-[#888] font-medium">Como funciona:</span> Todo{" "}
-          <span className="text-[#22c55e]">{DAYS[settings.dayOfWeek]}</span> o sistema envia automaticamente
-          para <strong className="text-[#888]">todos os pacientes ativos em acompanhamento</strong>,
-          independente de quando foi a última consulta.
-          A mensagem se repete toda semana enquanto o paciente estiver ativo.
+          <span className="text-[#888] font-medium">Como funciona:</span> Quando uma consulta é marcada como{" "}
+          <span className="text-white">Concluída</span>, o sistema aguarda{" "}
+          <span className="text-[#22c55e]">{settings.daysAfter} {settings.daysAfter === 1 ? "dia" : "dias"}</span> e envia
+          automaticamente a mensagem para o paciente. Cada consulta gera apenas um envio.
           O WhatsApp precisa estar conectado nas configurações.
         </p>
       </div>

@@ -12,81 +12,92 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const todayDayOfWeek = new Date().getDay(); // 0=Dom, 1=Seg ... 6=Sab
-
-  // Busca tenants com pós-consulta ativo, configurado para hoje e WhatsApp conectado
+  // Busca tenants com pós-consulta ativo e WhatsApp conectado
   const tenants = await prisma.tenant.findMany({
-    where: {
-      postConsultEnabled: true,
-      postConsultDayOfWeek: todayDayOfWeek,
-      whatsappStatus: "CONNECTED",
-    },
-    include: {
-      messageTemplates: { where: { type: "POST_CONSULTATION" } },
-    },
+    where: { postConsultEnabled: true, whatsappStatus: "CONNECTED" },
+    select: { id: true, name: true, clinicName: true, postConsultDaysAfter: true },
   });
 
   let totalSent = 0;
   let totalErrors = 0;
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
   for (const tenant of tenants) {
-    const template = tenant.messageTemplates[0];
-    if (!template) continue;
+    const daysAfter = tenant.postConsultDaysAfter ?? 3;
 
-    // Evita reenvio na mesma semana (6 dias de intervalo mínimo)
-    const sixDaysAgo = new Date();
-    sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+    // Data alvo: hoje - daysAfter (consultas que deveriam disparar hoje)
+    const targetStart = new Date(today.getTime() - daysAfter * 24 * 60 * 60 * 1000);
+    const targetEnd = new Date(tomorrow.getTime() - daysAfter * 24 * 60 * 60 * 1000);
 
-    const patients = await prisma.patient.findMany({
+    const appointments = await prisma.appointment.findMany({
       where: {
         tenantId: tenant.id,
-        isActive: true,
-        stage: { in: ["ACTIVE", "FIRST_CONSULTATION", "REACTIVATED"] },
-        OR: [
-          { postConsultSentAt: null },
-          { postConsultSentAt: { lt: sixDaysAgo } },
-        ],
+        status: "COMPLETED",
+        scheduledAt: { gte: targetStart, lt: targetEnd },
+        postConsultSent: false,
+      },
+      include: {
+        patient: { select: { id: true, name: true, phone: true, whatsappChatId: true } },
       },
     });
 
-    for (const patient of patients) {
-      if (!patient.phone) continue;
+    const template = await prisma.messageTemplate.findUnique({
+      where: { tenantId_type: { tenantId: tenant.id, type: "POST_CONSULTATION" } },
+    });
+    if (!template) continue;
 
+    for (const apt of appointments) {
       const message = replaceTemplateVars(template.content, {
-        nome_paciente: patient.name.split(" ")[0],
+        nome_paciente: apt.patient.name.split(" ")[0],
         nome_nutricionista: tenant.name,
         nome_clinica: tenant.clinicName || "",
       });
 
       try {
-        await evoSendText(tenant.id, patient.phone, message);
+        // Resolve chatId para garantir entrega correta (inclusive LIDs)
+        let resolvedChatId: string | undefined = apt.patient.whatsappChatId ?? undefined;
+        if (!resolvedChatId) {
+          const phoneDigits = apt.patient.phone.replace(/\D/g, "");
+          const normalizedPhone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
+          const lastMsg = await prisma.inboxMessage.findFirst({
+            where: { tenantId: tenant.id, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
+            orderBy: { timestamp: "desc" },
+            select: { chatId: true },
+          });
+          resolvedChatId = lastMsg?.chatId ?? undefined;
+        }
 
-        await prisma.patient.update({
-          where: { id: patient.id },
-          data: { postConsultSentAt: new Date() },
+        await evoSendText(tenant.id, apt.patient.phone, message, resolvedChatId);
+
+        await prisma.appointment.update({
+          where: { id: apt.id },
+          data: { postConsultSent: true },
         });
 
         await prisma.whatsAppLog.create({
           data: {
             tenantId: tenant.id,
-            patientId: patient.id,
+            patientId: apt.patient.id,
             messageType: "POST_CONSULTATION",
-            phoneNumber: patient.phone,
+            phoneNumber: apt.patient.phone,
             messageText: message,
             status: "SENT",
           },
         });
 
         totalSent++;
-        console.log(`[pos-consulta] ✅ ${patient.name} (tenant: ${tenant.id})`);
+        console.log(`[pos-consulta] ✅ ${apt.patient.name} (tenant: ${tenant.id})`);
       } catch (e) {
-        console.error(`[pos-consulta] ❌ Erro para ${patient.name}:`, e);
+        console.error(`[pos-consulta] ❌ Erro para ${apt.patient.name}:`, e);
         await prisma.whatsAppLog.create({
           data: {
             tenantId: tenant.id,
-            patientId: patient.id,
+            patientId: apt.patient.id,
             messageType: "POST_CONSULTATION",
-            phoneNumber: patient.phone,
+            phoneNumber: apt.patient.phone,
             messageText: message,
             status: "FAILED",
             errorMessage: String(e),

@@ -160,50 +160,6 @@ async function sendReminders24h() {
   return sent;
 }
 
-// Mensagem pós-consulta (3 dias depois de consulta COMPLETED)
-async function sendPostConsultation() {
-  const threeDaysAgo = new Date();
-  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-  const fourDaysAgo = new Date();
-  fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
-
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      scheduledAt: { gte: fourDaysAgo, lt: threeDaysAgo },
-      status: "COMPLETED",
-      postConsultSent: false,
-    },
-    include: {
-      patient: { select: { id: true, name: true, phone: true } },
-      tenant: { select: { id: true, name: true, clinicName: true, whatsappStatus: true, subscription: { select: { plan: { select: { name: true } } } } } },
-    },
-  });
-
-  let sent = 0;
-  for (const apt of appointments) {
-    if (apt.tenant.whatsappStatus !== "CONNECTED") continue;
-    if (!isProfessionalPlan(apt.tenant)) continue;
-
-    const template = await prisma.messageTemplate.findUnique({
-      where: { tenantId_type: { tenantId: apt.tenantId, type: "POST_CONSULTATION" } },
-    });
-    if (!template) continue;
-
-    const message = replaceTemplateVars(template.content, {
-      nome_paciente: apt.patient.name,
-      nome_nutricionista: apt.tenant.name,
-      nome_clinica: apt.tenant.clinicName || "",
-    });
-
-    const ok = await sendTemplateMessage(apt.tenantId, apt.patient.id, apt.patient.phone, message, "POST_CONSULTATION");
-    if (ok) {
-      await prisma.appointment.update({ where: { id: apt.id }, data: { postConsultSent: true } });
-      sent++;
-    }
-  }
-  return sent;
-}
-
 // Mensagem de aniversário
 async function sendBirthday() {
   const today = new Date();
@@ -316,7 +272,6 @@ export async function GET(req: Request) {
   const tasks = {
     reminders8d: sendReminders8d(),
     reminders24h: sendReminders24h(),
-    postConsult: sendPostConsultation(),
     birthdays: sendBirthday(),
     reactivations: sendReactivation(),
   };
