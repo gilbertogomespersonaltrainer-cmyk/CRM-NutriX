@@ -56,6 +56,8 @@ export async function POST(req: Request) {
         address: body.address || null,
         howFoundUs: body.howFoundUs || null,
         notes: body.notes || null,
+        stage: "ACTIVE",
+        isActive: true,
       },
     });
 
