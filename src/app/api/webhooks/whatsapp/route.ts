@@ -81,8 +81,10 @@ export async function POST(req: Request) {
           msg.message?.videoMessage?.caption ??
           "";
 
-        const contactName: string | null =
-          msg.pushName ?? msg.notifyName ?? null;
+        // pushName em mensagens enviadas (fromMe) é o nome do próprio remetente — ignorar
+        const contactName: string | null = fromMe
+          ? null
+          : (msg.pushName ?? msg.notifyName ?? null);
 
         const timestamp = msg.messageTimestamp
           ? new Date(Number(msg.messageTimestamp) * 1000)
