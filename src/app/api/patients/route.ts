@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         tenantId,
         name: body.name,
         cpf: body.cpf || null,
-        birthDate: body.birthDate ? new Date(body.birthDate) : null,
+        birthDate: body.birthDate ? new Date(`${body.birthDate}T12:00:00`) : null,
         phone: body.phone,
         email: body.email || null,
         address: body.address || null,
