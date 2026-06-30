@@ -14,12 +14,14 @@ export async function GET(req: Request) {
   }
 
   const now = new Date();
-  const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-  const threeHoursFromNow = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  // Janela: consultas entre 1h45min e 3h a partir de agora
+  // Cobre execuções a cada 3h sem deixar buracos nem reenvios (reminder2hSent evita duplicatas)
+  const windowStart = new Date(now.getTime() + 1 * 60 * 60 * 1000 + 45 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 3 * 60 * 60 * 1000);
 
   const appointments = await prisma.appointment.findMany({
     where: {
-      scheduledAt: { gte: twoHoursFromNow, lt: threeHoursFromNow },
+      scheduledAt: { gte: windowStart, lt: windowEnd },
       status: "SCHEDULED",
       reminder2hSent: false,
     },
