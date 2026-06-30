@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Search, Send, MessageCircle, User, Loader2, CheckCheck, Link2 } from "lucide-react";
+import { Search, Send, MessageCircle, User, Loader2, CheckCheck, Link2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/toaster";
@@ -110,6 +110,7 @@ export default function InboxPage() {
   const [linkPatients, setLinkPatients] = useState<{id:string;name:string;phone:string}[]>([]);
   const [linking, setLinking] = useState(false);
   const [fixingLid, setFixingLid] = useState(false);
+  const [deletingConv, setDeletingConv] = useState(false);
   // controla se é o primeiro carregamento (mostra spinner) ou refresh silencioso
   const initialConvsLoad = useRef(true);
   const initialMsgsLoad = useRef<string | null>(null); // phone da conversa carregando pela 1ª vez
@@ -442,6 +443,30 @@ export default function InboxPage() {
                 {STAGE_LABELS[selectedConv.patientStage].label}
               </span>
             )}
+            <button
+              onClick={async () => {
+                if (!confirm("Apagar todas as mensagens desta conversa? O contato não será removido.")) return;
+                setDeletingConv(true);
+                try {
+                  const res = await fetch(`/api/inbox/${encodeURIComponent(selectedPhone)}`, { method: "DELETE" });
+                  if (res.ok) {
+                    setMessages([]);
+                    setConversations(prev => prev.filter(c => c.phone !== selectedPhone));
+                    setSelectedPhone(null);
+                    toast({ title: "Conversa apagada", variant: "success" });
+                  } else {
+                    toast({ title: "Erro ao apagar conversa", variant: "error" });
+                  }
+                } finally {
+                  setDeletingConv(false);
+                }
+              }}
+              disabled={deletingConv}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/8 border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/15 transition-colors disabled:opacity-50"
+              title="Apagar conversa"
+            >
+              {deletingConv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            </button>
           </div>
 
           {/* Messages */}

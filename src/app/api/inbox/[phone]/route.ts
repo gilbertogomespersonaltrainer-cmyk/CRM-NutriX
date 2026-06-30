@@ -26,6 +26,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ phone: s
   }
 }
 
+// DELETE: apaga todas as mensagens da conversa
+export async function DELETE(req: Request, { params }: { params: Promise<{ phone: string }> }) {
+  try {
+    const tenantId = await getTenantId();
+    const { phone } = await params;
+
+    await prisma.inboxMessage.deleteMany({ where: { tenantId, phone } });
+
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Erro ao apagar conversa" }, { status: 500 });
+  }
+}
+
 // POST: envia mensagem para o contato
 export async function POST(req: Request, { params }: { params: Promise<{ phone: string }> }) {
   try {
