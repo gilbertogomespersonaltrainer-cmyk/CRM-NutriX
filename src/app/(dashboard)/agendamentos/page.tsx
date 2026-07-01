@@ -605,7 +605,11 @@ export default function AgendamentosPage() {
                   {dayApts.length > 0 && (
                     <div className="flex flex-col gap-0.5 mt-1">
                       {dayApts.slice(0, 2).map((apt) => (
-                        <div key={apt.id} className="flex items-center gap-1 px-1 py-0.5 rounded bg-[#111] border border-[#1e1e1e] overflow-hidden">
+                        <div
+                          key={apt.id}
+                          onClick={(e) => { e.stopPropagation(); setSelectedApt(apt); }}
+                          className="flex items-center gap-1 px-1 py-0.5 rounded bg-[#111] border border-[#1e1e1e] overflow-hidden cursor-pointer hover:border-[#22c55e]/40 hover:bg-[#22c55e]/5 transition-colors"
+                        >
                           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_COLORS[apt.status]?.dot || "bg-[#888]"}`} />
                           <span className="text-[9px] text-[#aaa] truncate leading-tight">{apt.patient.name.split(" ")[0]}</span>
                         </div>
