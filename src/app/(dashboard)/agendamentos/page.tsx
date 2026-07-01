@@ -240,6 +240,20 @@ export default function AgendamentosPage() {
             <Clock className="h-4 w-4 text-[#555]" />
             <span>{formatTime(selectedApt.scheduledAt)} · {selectedApt.duration}min</span>
           </div>
+          {(selectedApt.consultationType || selectedApt.appointmentModality) && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedApt.consultationType && (
+                <span className="text-xs px-2 py-0.5 rounded-md bg-[#1a1a1a] border border-[#222] text-[#aaa]">
+                  {selectedApt.consultationType}
+                </span>
+              )}
+              {selectedApt.appointmentModality && (
+                <span className="text-xs px-2 py-0.5 rounded-md bg-[#1a1a1a] border border-[#222] text-[#aaa]">
+                  {selectedApt.appointmentModality}
+                </span>
+              )}
+            </div>
+          )}
           {selectedApt.notes && (
             <p className="text-xs text-[#666] bg-[#0d0d0d] rounded-lg p-2.5 border border-[#1a1a1a]">{selectedApt.notes}</p>
           )}
@@ -339,6 +353,11 @@ export default function AgendamentosPage() {
                         <p className="text-xs text-white font-medium truncate group-hover:text-[#4ade80] transition-colors">
                           {apt.patient.name}
                         </p>
+                        {(apt.consultationType || apt.appointmentModality) && (
+                          <p className="text-[9px] text-[#555] truncate mt-0.5">
+                            {[apt.consultationType, apt.appointmentModality].filter(Boolean).join(" · ")}
+                          </p>
+                        )}
                       </button>
                     ))
                   )}
@@ -430,6 +449,11 @@ export default function AgendamentosPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white group-hover:text-[#4ade80] transition-colors">{apt.patient.name}</p>
                       <p className="text-xs text-[#666]">{formatTime(apt.scheduledAt)} · {apt.duration}min</p>
+                      {(apt.consultationType || apt.appointmentModality) && (
+                        <p className="text-xs text-[#555] truncate mt-0.5">
+                          {[apt.consultationType, apt.appointmentModality].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${STATUS_COLORS[apt.status]?.dot || "bg-[#888]"}`} />

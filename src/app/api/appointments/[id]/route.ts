@@ -26,6 +26,8 @@ export async function PUT(
         duration: body.duration,
         status: body.status,
         notes: body.notes,
+        consultationType: body.consultationType !== undefined ? body.consultationType : undefined,
+        appointmentModality: body.appointmentModality !== undefined ? body.appointmentModality : undefined,
       },
       include: { patient: { select: { name: true, phone: true } } },
     });
