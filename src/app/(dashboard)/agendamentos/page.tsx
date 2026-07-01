@@ -88,6 +88,9 @@ export default function AgendamentosPage() {
     appointmentModality: "",
   });
   const [appointmentTypes, setAppointmentTypes] = useState<string[]>([]);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleForm, setRescheduleForm] = useState({ date: "", time: "" });
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
@@ -152,6 +155,30 @@ export default function AgendamentosPage() {
     }
   }
 
+  async function handleReschedule() {
+    if (!selectedApt || !rescheduleForm.date || !rescheduleForm.time) return;
+    setRescheduleLoading(true);
+    try {
+      const scheduledAt = `${rescheduleForm.date}T${rescheduleForm.time}`;
+      const res = await fetch(`/api/appointments/${selectedApt.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt, sendConfirmation: true }),
+      });
+      if (res.ok) {
+        toast({ title: "Reagendado! Nova confirmação enviada ao paciente.", variant: "success" });
+        setSelectedApt(null);
+        setRescheduling(false);
+        setRescheduleForm({ date: "", time: "" });
+        fetchAppointments();
+      } else {
+        toast({ title: "Erro ao reagendar", variant: "error" });
+      }
+    } finally {
+      setRescheduleLoading(false);
+    }
+  }
+
   async function updateStatus(id: string, status: string) {
     const res = await fetch(`/api/appointments/${id}`, {
       method: "PUT",
@@ -213,16 +240,22 @@ export default function AgendamentosPage() {
   const monthGrid = buildMonthGrid();
   const today = new Date();
 
+  function closeAptModal() {
+    setSelectedApt(null);
+    setRescheduling(false);
+    setRescheduleForm({ date: "", time: "" });
+  }
+
   // Appointment detail modal
   const AptModal = selectedApt ? (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSelectedApt(null)}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={closeAptModal}>
       <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl w-full max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-[#1e1e1e]">
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${STATUS_COLORS[selectedApt.status]?.dot || "bg-[#888]"}`} />
             <span className="text-sm font-medium text-[#888]">{STATUS_COLORS[selectedApt.status]?.label}</span>
           </div>
-          <button onClick={() => setSelectedApt(null)} className="w-7 h-7 rounded-lg border border-[#222] flex items-center justify-center text-[#666] hover:text-white transition-colors">
+          <button onClick={closeAptModal} className="w-7 h-7 rounded-lg border border-[#222] flex items-center justify-center text-[#666] hover:text-white transition-colors">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -259,17 +292,74 @@ export default function AgendamentosPage() {
           )}
         </div>
         {selectedApt.status === "SCHEDULED" && (
-          <div className="flex gap-2 p-4 border-t border-[#1e1e1e]">
-            <Button size="sm" className="flex-1 text-xs" onClick={() => updateStatus(selectedApt.id, "COMPLETED")}>
-              Realizada
-            </Button>
-            <Button variant="ghost" size="sm" className="flex-1 text-xs text-[#f59e0b] hover:text-[#f59e0b]" onClick={() => updateStatus(selectedApt.id, "NO_SHOW")}>
-              Faltou
-            </Button>
-            <Button variant="ghost" size="sm" className="flex-1 text-xs text-[#ef4444] hover:text-[#ef4444]" onClick={() => updateStatus(selectedApt.id, "CANCELLED")}>
-              Cancelar
-            </Button>
-          </div>
+          <>
+            {rescheduling ? (
+              <div className="p-4 border-t border-[#1e1e1e] space-y-3">
+                <p className="text-xs font-medium text-[#888]">Nova data e hora</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Data</Label>
+                    <Input
+                      type="date"
+                      value={rescheduleForm.date}
+                      onChange={(e) => setRescheduleForm((p) => ({ ...p, date: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Hora</Label>
+                    <Input
+                      type="time"
+                      value={rescheduleForm.time}
+                      onChange={(e) => setRescheduleForm((p) => ({ ...p, time: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 text-xs"
+                    disabled={!rescheduleForm.date || !rescheduleForm.time || rescheduleLoading}
+                    onClick={handleReschedule}
+                  >
+                    {rescheduleLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirmar reagendamento"}
+                  </Button>
+                  <Button variant="secondary" size="sm" className="text-xs" onClick={() => setRescheduling(false)}>
+                    Voltar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 border-t border-[#1e1e1e] space-y-2">
+                <div className="flex gap-2">
+                  <Button size="sm" className="flex-1 text-xs" onClick={() => updateStatus(selectedApt.id, "COMPLETED")}>
+                    Realizada
+                  </Button>
+                  <Button variant="ghost" size="sm" className="flex-1 text-xs text-[#f59e0b] hover:text-[#f59e0b]" onClick={() => updateStatus(selectedApt.id, "NO_SHOW")}>
+                    Faltou
+                  </Button>
+                  <Button variant="ghost" size="sm" className="flex-1 text-xs text-[#ef4444] hover:text-[#ef4444]" onClick={() => updateStatus(selectedApt.id, "CANCELLED")}>
+                    Cancelar
+                  </Button>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => {
+                    const d = new Date(selectedApt.scheduledAt);
+                    setRescheduleForm({
+                      date: d.toISOString().slice(0, 10),
+                      time: d.toTimeString().slice(0, 5),
+                    });
+                    setRescheduling(true);
+                  }}
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  Reagendar
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

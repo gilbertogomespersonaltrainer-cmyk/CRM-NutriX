@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
 import { updateCalendarEvent, deleteCalendarEvent } from "@/lib/google-calendar";
+import { evoSendText } from "@/lib/evolution";
+import { replaceTemplateVars, formatDateBR, formatTimeBR } from "@/lib/templates";
 
 export async function PUT(
   req: Request,
@@ -46,6 +48,61 @@ export async function PUT(
         where: { id: existing.patientId },
         data: { lastAppointmentAt: new Date(), isActive: true, ...stageUpdate },
       });
+    }
+
+    // Envia nova confirmação ao reagendar
+    if (body.sendConfirmation) {
+      try {
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { name: true, clinicName: true, whatsappStatus: true },
+        });
+        if (tenant?.whatsappStatus === "CONNECTED") {
+          const template = await prisma.messageTemplate.findUnique({
+            where: { tenantId_type: { tenantId, type: "CONFIRMATION" } },
+          });
+          const patient = await prisma.patient.findUnique({
+            where: { id: existing.patientId },
+            select: { name: true, phone: true, whatsappChatId: true },
+          });
+          if (template && patient) {
+            const scheduledDate = new Date(appointment.scheduledAt);
+            const message = replaceTemplateVars(template.content, {
+              nome_paciente: patient.name,
+              nome_nutricionista: tenant.name,
+              nome_clinica: tenant.clinicName || "",
+              data_consulta: formatDateBR(scheduledDate),
+              hora_consulta: formatTimeBR(scheduledDate),
+              tipo_consulta: appointment.consultationType || "",
+              modalidade_consulta: appointment.appointmentModality || "",
+            });
+            const phoneDigits = patient.phone.replace(/\D/g, "");
+            const normalizedPhone = phoneDigits.length <= 11 ? `55${phoneDigits}` : phoneDigits;
+            let resolvedChatId: string | undefined = patient.whatsappChatId ?? undefined;
+            if (!resolvedChatId) {
+              const lastMsg = await prisma.inboxMessage.findFirst({
+                where: { tenantId, phone: normalizedPhone, fromMe: false, chatId: { not: null } },
+                orderBy: { timestamp: "desc" },
+                select: { chatId: true },
+              });
+              resolvedChatId = lastMsg?.chatId ?? undefined;
+            }
+            await evoSendText(tenantId, patient.phone, message, resolvedChatId);
+            await prisma.whatsAppLog.create({
+              data: {
+                tenantId,
+                patientId: existing.patientId,
+                messageType: "CONFIRMATION",
+                phoneNumber: patient.phone,
+                messageText: message,
+                status: "SENT",
+              },
+            });
+          }
+        }
+      } catch (err) {
+        console.error("[reschedule-confirmation]", err);
+      }
     }
 
     // Sincroniza com Google Calendar (não-bloqueante)
