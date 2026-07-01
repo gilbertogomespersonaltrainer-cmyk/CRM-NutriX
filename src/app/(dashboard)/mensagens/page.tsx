@@ -81,7 +81,8 @@ const VARIABLES = [
   { key: "{nome_clinica}",       label: "Nome da clínica" },
   { key: "{data_consulta}",      label: "Data da consulta" },
   { key: "{hora_consulta}",      label: "Hora da consulta" },
-  { key: "{tipo_consulta}",      label: "Tipo de consulta" },
+  { key: "{tipo_consulta}",           label: "Tipo de consulta" },
+  { key: "{modalidade_consulta}",     label: "Modalidade (Presencial/Online)" },
 ];
 
 export default function MensagensPage() {
@@ -210,6 +211,7 @@ export default function MensagensPage() {
         .replace(/{data_consulta}/g, "15/06/2026")
         .replace(/{hora_consulta}/g, "14:00")
         .replace(/{tipo_consulta}/g, "Consulta")
+        .replace(/{modalidade_consulta}/g, "Presencial")
     : message;
 
   async function handleSend() {
