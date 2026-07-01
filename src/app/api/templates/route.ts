@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantId } from "@/lib/session";
+import { MessageTemplateType } from "@prisma/client";
 
 const TEMPLATE_DEFAULTS: Record<string, string> = {
-  CONFIRMATION: "Olá {nome_paciente}! Sua {tipo_consulta} com {nome_nutricionista} está confirmada para {data_consulta} às {hora_consulta}. Qualquer dúvida, estou à disposição! 😊",
-  REMINDER_8D: "Olá {nome_paciente}! Passando para lembrar que sua {tipo_consulta} com {nome_nutricionista} está agendada para {data_consulta} às {hora_consulta}. Confirme sua presença respondendo esta mensagem! 😊",
-  REMINDER_2H: "Olá {nome_paciente}! Sua {tipo_consulta} com {nome_nutricionista} é daqui a pouco, às {hora_consulta}. Até logo! 🕐",
-  REMINDER: "Olá {nome_paciente}! Lembrando que você tem {tipo_consulta} amanhã, {data_consulta} às {hora_consulta} com {nome_nutricionista}. Até lá! 👋",
+  CONFIRMATION: "Olá {nome_paciente}! Sua {tipo_consulta} ({modalidade_consulta}) com {nome_nutricionista} está confirmada para {data_consulta} às {hora_consulta}. Qualquer dúvida, estou à disposição! 😊",
+  REMINDER_8D: "Olá {nome_paciente}! Passando para lembrar que sua {tipo_consulta} ({modalidade_consulta}) com {nome_nutricionista} está agendada para {data_consulta} às {hora_consulta}. Confirme sua presença respondendo esta mensagem! 😊",
+  REMINDER_2H: "Olá {nome_paciente}! Sua {tipo_consulta} ({modalidade_consulta}) com {nome_nutricionista} é daqui a pouco, às {hora_consulta}. Até logo! 🕐",
+  REMINDER: "Olá {nome_paciente}! Lembrando que você tem {tipo_consulta} ({modalidade_consulta}) amanhã, {data_consulta} às {hora_consulta} com {nome_nutricionista}. Até lá! 👋",
   FOLLOWUP: "Olá {nome_paciente}! Tudo bem com você? 😊 Estava pensando em você e quis dar um oi. Como você está se sentindo em relação à sua alimentação ultimamente? Estou aqui se precisar de mim! 🌱",
   POST_CONSULTATION: "Olá {nome_paciente}! Como você está se sentindo após nossa última consulta? Lembre-se de seguir as orientações nutricionais combinadas. Qualquer dúvida, pode me chamar! 🌿",
   BIRTHDAY: "Olá {nome_paciente}! 🎉 Hoje é um dia especial — feliz aniversário! Desejo que este novo ciclo seja repleto de saúde, alegria e conquistas. Um abraço carinhoso de {nome_nutricionista}! 🎂",
@@ -24,10 +25,10 @@ export async function GET() {
     const existingTypes = new Set(existing.map((t) => t.type));
 
     // Auto-cria templates padrão que ainda não existem no banco
-    const missing = Object.entries(TEMPLATE_DEFAULTS).filter(([type]) => !existingTypes.has(type));
+    const missing = Object.entries(TEMPLATE_DEFAULTS).filter(([type]) => !existingTypes.has(type as MessageTemplateType));
     if (missing.length > 0) {
       await prisma.messageTemplate.createMany({
-        data: missing.map(([type, content]) => ({ tenantId, type, content })),
+        data: missing.map(([type, content]) => ({ tenantId, type: type as MessageTemplateType, content })),
         skipDuplicates: true,
       });
       const all = await prisma.messageTemplate.findMany({ where: { tenantId } });
