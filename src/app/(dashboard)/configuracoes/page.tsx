@@ -800,7 +800,7 @@ export default function ConfiguracoesPage() {
       {tab === "templates" && (
         <div className="max-w-2xl space-y-4">
           <p className="text-sm text-[#666]">
-            Variáveis disponíveis: <span className="text-[#22c55e]">{"{nome_paciente}"}</span>, <span className="text-[#22c55e]">{"{data_consulta}"}</span>, <span className="text-[#22c55e]">{"{hora_consulta}"}</span>, <span className="text-[#22c55e]">{"{tipo_consulta}"}</span>, <span className="text-[#22c55e]">{"{modalidade_consulta}"}</span>, <span className="text-[#22c55e]">{"{nome_nutricionista}"}</span>, <span className="text-[#22c55e]">{"{nome_clinica}"}</span>
+            Clique em uma variável para inserir no template que estiver editando.
           </p>
           {[
             {
@@ -963,6 +963,16 @@ export default function ConfiguracoesPage() {
   );
 }
 
+const TEMPLATE_VARIABLES = [
+  "{nome_paciente}",
+  "{data_consulta}",
+  "{hora_consulta}",
+  "{tipo_consulta}",
+  "{modalidade_consulta}",
+  "{nome_nutricionista}",
+  "{nome_clinica}",
+];
+
 function TemplateEditor({
   type,
   initialContent,
@@ -974,6 +984,7 @@ function TemplateEditor({
 }) {
   const [content, setContent] = useState(initialContent);
   const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   async function handleSave() {
     setSaving(true);
@@ -981,9 +992,35 @@ function TemplateEditor({
     setSaving(false);
   }
 
+  function insertVariable(variable: string) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? content.length;
+    const end = el.selectionEnd ?? content.length;
+    const newContent = content.slice(0, start) + variable + content.slice(end);
+    setContent(newContent);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + variable.length, start + variable.length);
+    }, 0);
+  }
+
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap gap-1.5">
+        {TEMPLATE_VARIABLES.map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => insertVariable(v)}
+            className="text-xs px-2 py-0.5 rounded-md bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20 hover:bg-[#22c55e]/20 transition-colors font-mono"
+          >
+            {v}
+          </button>
+        ))}
+      </div>
       <Textarea
+        ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         rows={3}
