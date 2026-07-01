@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
-import { Plus, ChevronLeft, ChevronRight, Loader2, Calendar, X, Clock } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Loader2, Calendar, X, Clock, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 type Appointment = {
   id: string;
@@ -66,6 +66,113 @@ function isSameDay(a: Date, b: Date) {
 function formatTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+const WEEK_DAYS_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+function MiniCalendar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const today = new Date();
+  const selected = value ? new Date(`${value}T12:00:00`) : null;
+  const [nav, setNav] = useState(() => {
+    const base = selected || today;
+    return { year: base.getFullYear(), month: base.getMonth() };
+  });
+
+  function prevMonth() {
+    setNav((n) => n.month === 0 ? { year: n.year - 1, month: 11 } : { ...n, month: n.month - 1 });
+  }
+  function nextMonth() {
+    setNav((n) => n.month === 11 ? { year: n.year + 1, month: 0 } : { ...n, month: n.month + 1 });
+  }
+
+  const firstDay = new Date(nav.year, nav.month, 1).getDay();
+  const daysInMonth = new Date(nav.year, nav.month + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(firstDay).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  function selectDay(day: number) {
+    const mm = String(nav.month + 1).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    onChange(`${nav.year}-${mm}-${dd}`);
+  }
+
+  function isSelected(day: number) {
+    return selected && selected.getFullYear() === nav.year && selected.getMonth() === nav.month && selected.getDate() === day;
+  }
+  function isToday(day: number) {
+    return today.getFullYear() === nav.year && today.getMonth() === nav.month && today.getDate() === day;
+  }
+
+  return (
+    <div className="border border-[#1e1e1e] rounded-xl bg-[#0a0a0a] p-3 select-none">
+      {/* Header navegação */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year - 1 }))} className="w-6 h-6 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+            <ChevronsLeft className="h-3.5 w-3.5" />
+          </button>
+          <button type="button" onClick={prevMonth} className="w-6 h-6 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <span className="text-sm font-semibold text-white capitalize">
+          {MONTHS_PT[nav.month]} {nav.year}
+        </span>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={nextMonth} className="w-6 h-6 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+          <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year + 1 }))} className="w-6 h-6 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+            <ChevronsRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+      {/* Dias da semana */}
+      <div className="grid grid-cols-7 mb-1">
+        {WEEK_DAYS_SHORT.map((d) => (
+          <div key={d} className="text-center text-[10px] text-[#444] font-medium py-1">{d}</div>
+        ))}
+      </div>
+      {/* Células */}
+      <div className="grid grid-cols-7 gap-y-0.5">
+        {cells.map((day, i) => (
+          <div key={i} className="flex items-center justify-center">
+            {day ? (
+              <button
+                type="button"
+                onClick={() => selectDay(day)}
+                className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors
+                  ${isSelected(day) ? "bg-[#22c55e] text-black font-bold" : isToday(day) ? "border border-[#22c55e]/50 text-[#4ade80]" : "text-[#888] hover:bg-[#1a1a1a] hover:text-white"}`}
+              >
+                {day}
+              </button>
+            ) : (
+              <span />
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Atalho hoje */}
+      <div className="mt-2 pt-2 border-t border-[#1a1a1a] flex justify-center">
+        <button
+          type="button"
+          onClick={() => {
+            const mm = String(today.getMonth() + 1).padStart(2, "0");
+            const dd = String(today.getDate()).padStart(2, "0");
+            onChange(`${today.getFullYear()}-${mm}-${dd}`);
+            setNav({ year: today.getFullYear(), month: today.getMonth() });
+          }}
+          className="text-[10px] text-[#555] hover:text-[#22c55e] transition-colors"
+        >
+          Hoje
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function AgendamentosPage() {
@@ -296,23 +403,19 @@ export default function AgendamentosPage() {
             {rescheduling ? (
               <div className="p-4 border-t border-[#1e1e1e] space-y-3">
                 <p className="text-xs font-medium text-[#888]">Nova data e hora</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Data</Label>
-                    <Input
-                      type="date"
-                      value={rescheduleForm.date}
-                      onChange={(e) => setRescheduleForm((p) => ({ ...p, date: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Hora</Label>
-                    <Input
-                      type="time"
-                      value={rescheduleForm.time}
-                      onChange={(e) => setRescheduleForm((p) => ({ ...p, time: e.target.value }))}
-                    />
-                  </div>
+                <MiniCalendar value={rescheduleForm.date} onChange={(v) => setRescheduleForm((p) => ({ ...p, date: v }))} />
+                {rescheduleForm.date && (
+                  <p className="text-xs text-[#555]">
+                    {new Date(`${rescheduleForm.date}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
+                  </p>
+                )}
+                <div className="space-y-1">
+                  <Label className="text-xs">Hora</Label>
+                  <Input
+                    type="time"
+                    value={rescheduleForm.time}
+                    onChange={(e) => setRescheduleForm((p) => ({ ...p, time: e.target.value }))}
+                  />
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -581,25 +684,23 @@ export default function AgendamentosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Data *</Label>
-                <Input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Hora *</Label>
-                <Input
-                  type="time"
-                  value={form.time}
-                  onChange={(e) => setForm((p) => ({ ...p, time: e.target.value }))}
-                  required
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Data *</Label>
+              <MiniCalendar value={form.date} onChange={(v) => setForm((p) => ({ ...p, date: v }))} />
+              {form.date && (
+                <p className="text-xs text-[#555]">
+                  Selecionado: {new Date(`${form.date}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Hora *</Label>
+              <Input
+                type="time"
+                value={form.time}
+                onChange={(e) => setForm((p) => ({ ...p, time: e.target.value }))}
+                required
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
