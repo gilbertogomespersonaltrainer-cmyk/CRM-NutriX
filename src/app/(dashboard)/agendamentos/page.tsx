@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,20 +71,23 @@ function formatTime(iso: string) {
 const WEEK_DAYS_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-function MiniCalendar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function DatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const today = new Date();
   const selected = value ? new Date(`${value}T12:00:00`) : null;
+  const [open, setOpen] = useState(false);
   const [nav, setNav] = useState(() => {
     const base = selected || today;
     return { year: base.getFullYear(), month: base.getMonth() };
   });
+  const ref = useRef<HTMLDivElement>(null);
 
-  function prevMonth() {
-    setNav((n) => n.month === 0 ? { year: n.year - 1, month: 11 } : { ...n, month: n.month - 1 });
-  }
-  function nextMonth() {
-    setNav((n) => n.month === 11 ? { year: n.year + 1, month: 0 } : { ...n, month: n.month + 1 });
-  }
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
 
   const firstDay = new Date(nav.year, nav.month, 1).getDay();
   const daysInMonth = new Date(nav.year, nav.month + 1, 0).getDate();
@@ -98,77 +101,84 @@ function MiniCalendar({ value, onChange }: { value: string; onChange: (v: string
     const mm = String(nav.month + 1).padStart(2, "0");
     const dd = String(day).padStart(2, "0");
     onChange(`${nav.year}-${mm}-${dd}`);
+    setOpen(false);
   }
 
-  function isSelected(day: number) {
-    return selected && selected.getFullYear() === nav.year && selected.getMonth() === nav.month && selected.getDate() === day;
+  function goToday() {
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    onChange(`${today.getFullYear()}-${mm}-${dd}`);
+    setNav({ year: today.getFullYear(), month: today.getMonth() });
+    setOpen(false);
   }
-  function isToday(day: number) {
-    return today.getFullYear() === nav.year && today.getMonth() === nav.month && today.getDate() === day;
-  }
+
+  const displayLabel = selected
+    ? selected.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+    : "Selecione uma data";
 
   return (
-    <div className="border border-[#1e1e1e] rounded-xl bg-[#0a0a0a] p-2 select-none">
-      {/* Header navegação */}
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center">
-          <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year - 1 }))} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
-            <ChevronsLeft className="h-3 w-3" />
-          </button>
-          <button type="button" onClick={prevMonth} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
-            <ChevronLeft className="h-3 w-3" />
-          </button>
-        </div>
-        <span className="text-xs font-semibold text-white capitalize">
-          {MONTHS_PT[nav.month]} {nav.year}
-        </span>
-        <div className="flex items-center">
-          <button type="button" onClick={nextMonth} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
-            <ChevronRight className="h-3 w-3" />
-          </button>
-          <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year + 1 }))} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
-            <ChevronsRight className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-      {/* Dias da semana */}
-      <div className="grid grid-cols-7">
-        {WEEK_DAYS_SHORT.map((d) => (
-          <div key={d} className="text-center text-[9px] text-[#444] font-medium py-0.5">{d}</div>
-        ))}
-      </div>
-      {/* Células */}
-      <div className="grid grid-cols-7">
-        {cells.map((day, i) => (
-          <div key={i} className="flex items-center justify-center py-0.5">
-            {day ? (
-              <button
-                type="button"
-                onClick={() => selectDay(day)}
-                className={`w-6 h-6 rounded-md text-[11px] font-medium transition-colors
-                  ${isSelected(day) ? "bg-[#22c55e] text-black font-bold" : isToday(day) ? "border border-[#22c55e]/50 text-[#4ade80]" : "text-[#888] hover:bg-[#1a1a1a] hover:text-white"}`}
-              >
-                {day}
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-[#222] bg-[#0d0d0d] text-sm text-left hover:border-[#333] transition-colors"
+      >
+        <Calendar className="h-4 w-4 text-[#555] flex-shrink-0" />
+        <span className={selected ? "text-white" : "text-[#555]"}>{displayLabel}</span>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 bg-[#111] border border-[#1e1e1e] rounded-xl shadow-2xl p-2 select-none w-64">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center">
+              <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year - 1 }))} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+                <ChevronsLeft className="h-3 w-3" />
               </button>
-            ) : <span />}
+              <button type="button" onClick={() => setNav((n) => n.month === 0 ? { year: n.year - 1, month: 11 } : { ...n, month: n.month - 1 })} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+                <ChevronLeft className="h-3 w-3" />
+              </button>
+            </div>
+            <span className="text-xs font-semibold text-white capitalize">{MONTHS_PT[nav.month]} {nav.year}</span>
+            <div className="flex items-center">
+              <button type="button" onClick={() => setNav((n) => n.month === 11 ? { year: n.year + 1, month: 0 } : { ...n, month: n.month + 1 })} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+                <ChevronRight className="h-3 w-3" />
+              </button>
+              <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year + 1 }))} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+                <ChevronsRight className="h-3 w-3" />
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
-      {/* Atalho hoje */}
-      <div className="mt-1 pt-1 border-t border-[#1a1a1a] flex justify-center">
-        <button
-          type="button"
-          onClick={() => {
-            const mm = String(today.getMonth() + 1).padStart(2, "0");
-            const dd = String(today.getDate()).padStart(2, "0");
-            onChange(`${today.getFullYear()}-${mm}-${dd}`);
-            setNav({ year: today.getFullYear(), month: today.getMonth() });
-          }}
-          className="text-[9px] text-[#555] hover:text-[#22c55e] transition-colors"
-        >
-          Hoje
-        </button>
-      </div>
+          {/* Dias da semana */}
+          <div className="grid grid-cols-7">
+            {WEEK_DAYS_SHORT.map((d) => (
+              <div key={d} className="text-center text-[9px] text-[#444] font-medium py-0.5">{d}</div>
+            ))}
+          </div>
+          {/* Células */}
+          <div className="grid grid-cols-7">
+            {cells.map((day, i) => {
+              const isSel = day && selected && selected.getFullYear() === nav.year && selected.getMonth() === nav.month && selected.getDate() === day;
+              const isTod = day && today.getFullYear() === nav.year && today.getMonth() === nav.month && today.getDate() === day;
+              return (
+                <div key={i} className="flex items-center justify-center py-0.5">
+                  {day ? (
+                    <button type="button" onClick={() => selectDay(day)}
+                      className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors
+                        ${isSel ? "bg-[#22c55e] text-black font-bold" : isTod ? "border border-[#22c55e]/50 text-[#4ade80]" : "text-[#888] hover:bg-[#1a1a1a] hover:text-white"}`}>
+                      {day}
+                    </button>
+                  ) : <span />}
+                </div>
+              );
+            })}
+          </div>
+          {/* Hoje */}
+          <div className="mt-1 pt-1 border-t border-[#1a1a1a] flex justify-center">
+            <button type="button" onClick={goToday} className="text-[10px] text-[#555] hover:text-[#22c55e] transition-colors">Hoje</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -401,7 +411,7 @@ export default function AgendamentosPage() {
             {rescheduling ? (
               <div className="p-4 border-t border-[#1e1e1e] space-y-3">
                 <p className="text-xs font-medium text-[#888]">Nova data e hora</p>
-                <MiniCalendar value={rescheduleForm.date} onChange={(v) => setRescheduleForm((p) => ({ ...p, date: v }))} />
+                <DatePicker value={rescheduleForm.date} onChange={(v) => setRescheduleForm((p) => ({ ...p, date: v }))} />
                 {rescheduleForm.date && (
                   <p className="text-xs text-[#555]">
                     {new Date(`${rescheduleForm.date}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
@@ -684,7 +694,7 @@ export default function AgendamentosPage() {
             </div>
             <div className="space-y-2">
               <Label>Data *</Label>
-              <MiniCalendar value={form.date} onChange={(v) => setForm((p) => ({ ...p, date: v }))} />
+              <DatePicker value={form.date} onChange={(v) => setForm((p) => ({ ...p, date: v }))} />
               {form.date && (
                 <p className="text-xs text-[#555]">
                   Selecionado: {new Date(`${form.date}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
