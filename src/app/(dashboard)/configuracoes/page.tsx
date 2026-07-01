@@ -800,7 +800,7 @@ export default function ConfiguracoesPage() {
       {tab === "templates" && (
         <div className="max-w-2xl space-y-4">
           <p className="text-sm text-[#666]">
-            Variáveis disponíveis: <span className="text-[#22c55e]">{"{nome_paciente}"}</span>, <span className="text-[#22c55e]">{"{data_consulta}"}</span>, <span className="text-[#22c55e]">{"{hora_consulta}"}</span>, <span className="text-[#22c55e]">{"{tipo_consulta}"}</span>, <span className="text-[#22c55e]">{"{nome_nutricionista}"}</span>, <span className="text-[#22c55e]">{"{nome_clinica}"}</span>
+            Variáveis disponíveis: <span className="text-[#22c55e]">{"{nome_paciente}"}</span>, <span className="text-[#22c55e]">{"{data_consulta}"}</span>, <span className="text-[#22c55e]">{"{hora_consulta}"}</span>, <span className="text-[#22c55e]">{"{tipo_consulta}"}</span>, <span className="text-[#22c55e]">{"{modalidade_consulta}"}</span>, <span className="text-[#22c55e]">{"{nome_nutricionista}"}</span>, <span className="text-[#22c55e]">{"{nome_clinica}"}</span>
           </p>
           {[
             {

@@ -230,7 +230,8 @@ model Appointment {
   duration         Int               @default(50)
   status           AppointmentStatus @default(SCHEDULED)
   notes            String?
-  consultationType String?
+  consultationType      String?
+  appointmentModality   String?
   confirmationSent Boolean           @default(false)
   reminder8dSent   Boolean           @default(false)
   reminder24hSent  Boolean           @default(false)

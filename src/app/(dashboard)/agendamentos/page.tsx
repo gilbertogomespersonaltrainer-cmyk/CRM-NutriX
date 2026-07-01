@@ -29,6 +29,7 @@ type Appointment = {
   status: string;
   notes: string | null;
   consultationType: string | null;
+  appointmentModality: string | null;
   patient: { name: string; phone: string };
 };
 
@@ -84,6 +85,7 @@ export default function AgendamentosPage() {
     duration: "50",
     notes: "",
     consultationType: "",
+    appointmentModality: "",
   });
   const [appointmentTypes, setAppointmentTypes] = useState<string[]>([]);
 
@@ -140,7 +142,7 @@ export default function AgendamentosPage() {
       if (res.ok) {
         toast({ title: "Agendamento criado!", variant: "success" });
         setShowNew(false);
-        setForm({ patientId: "", date: "", time: "", duration: "50", notes: "", consultationType: "" });
+        setForm({ patientId: "", date: "", time: "", duration: "50", notes: "", consultationType: "", appointmentModality: "" });
         fetchAppointments();
       } else {
         toast({ title: "Erro ao criar agendamento", variant: "error" });
@@ -513,6 +515,22 @@ export default function AgendamentosPage() {
                 </Select>
               </div>
             )}
+            <div className="space-y-2">
+              <Label>Modalidade</Label>
+              <Select
+                value={form.appointmentModality}
+                onValueChange={(v) => setForm((p) => ({ ...p, appointmentModality: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a modalidade (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Presencial">Presencial</SelectItem>
+                  <SelectItem value="Online">Online</SelectItem>
+                  <SelectItem value="Híbrido">Híbrido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Observações</Label>
               <Textarea

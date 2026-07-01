@@ -56,6 +56,7 @@ export async function POST(req: Request) {
         duration: body.duration || 50,
         notes: body.notes || null,
         consultationType: body.consultationType || null,
+        appointmentModality: body.appointmentModality || null,
       },
       include: { patient: { select: { name: true, phone: true } } },
     });
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
             data_consulta: formatDateBR(scheduledDate),
             hora_consulta: formatTimeBR(scheduledDate),
             tipo_consulta: appointment.consultationType || "",
+            modalidade_consulta: appointment.appointmentModality || "",
           });
 
           // Prioridade: 1) whatsappChatId salvo no paciente (cobre LIDs)

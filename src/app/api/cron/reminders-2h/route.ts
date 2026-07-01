@@ -50,6 +50,7 @@ export async function GET(req: Request) {
       data_consulta: formatDateBR(scheduledDate),
       hora_consulta: formatTimeBR(scheduledDate),
       tipo_consulta: apt.consultationType || "",
+      modalidade_consulta: apt.appointmentModality || "",
     });
 
     try {
