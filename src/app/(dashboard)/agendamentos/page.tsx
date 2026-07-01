@@ -521,9 +521,9 @@ export default function AgendamentosPage() {
                 />
               </div>
             </div>
-            {appointmentTypes.length > 0 && (
-              <div className="space-y-2">
-                <Label>Tipo de Consulta</Label>
+            <div className="space-y-2">
+              <Label>Tipo de Consulta</Label>
+              {appointmentTypes.length > 0 ? (
                 <Select
                   value={form.consultationType}
                   onValueChange={(v) => setForm((p) => ({ ...p, consultationType: v }))}
@@ -537,8 +537,14 @@ export default function AgendamentosPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
+              ) : (
+                <Input
+                  value={form.consultationType}
+                  onChange={(e) => setForm((p) => ({ ...p, consultationType: e.target.value }))}
+                  placeholder="Ex: Consulta inicial, Retorno..."
+                />
+              )}
+            </div>
             <div className="space-y-2">
               <Label>Modalidade</Label>
               <Select
