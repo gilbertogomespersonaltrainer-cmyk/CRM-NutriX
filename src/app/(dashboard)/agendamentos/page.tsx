@@ -108,56 +108,54 @@ function MiniCalendar({ value, onChange }: { value: string; onChange: (v: string
   }
 
   return (
-    <div className="border border-[#1e1e1e] rounded-xl bg-[#0a0a0a] p-3 select-none">
+    <div className="border border-[#1e1e1e] rounded-xl bg-[#0a0a0a] p-2 select-none">
       {/* Header navegação */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year - 1 }))} className="w-6 h-6 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
-            <ChevronsLeft className="h-3.5 w-3.5" />
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center">
+          <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year - 1 }))} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+            <ChevronsLeft className="h-3 w-3" />
           </button>
-          <button type="button" onClick={prevMonth} className="w-6 h-6 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
-            <ChevronLeft className="h-3.5 w-3.5" />
+          <button type="button" onClick={prevMonth} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+            <ChevronLeft className="h-3 w-3" />
           </button>
         </div>
-        <span className="text-sm font-semibold text-white capitalize">
+        <span className="text-xs font-semibold text-white capitalize">
           {MONTHS_PT[nav.month]} {nav.year}
         </span>
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={nextMonth} className="w-6 h-6 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
-            <ChevronRight className="h-3.5 w-3.5" />
+        <div className="flex items-center">
+          <button type="button" onClick={nextMonth} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+            <ChevronRight className="h-3 w-3" />
           </button>
-          <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year + 1 }))} className="w-6 h-6 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
-            <ChevronsRight className="h-3.5 w-3.5" />
+          <button type="button" onClick={() => setNav((n) => ({ ...n, year: n.year + 1 }))} className="w-5 h-5 rounded flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+            <ChevronsRight className="h-3 w-3" />
           </button>
         </div>
       </div>
       {/* Dias da semana */}
-      <div className="grid grid-cols-7 mb-1">
+      <div className="grid grid-cols-7">
         {WEEK_DAYS_SHORT.map((d) => (
-          <div key={d} className="text-center text-[10px] text-[#444] font-medium py-1">{d}</div>
+          <div key={d} className="text-center text-[9px] text-[#444] font-medium py-0.5">{d}</div>
         ))}
       </div>
       {/* Células */}
-      <div className="grid grid-cols-7 gap-y-0.5">
+      <div className="grid grid-cols-7">
         {cells.map((day, i) => (
-          <div key={i} className="flex items-center justify-center">
+          <div key={i} className="flex items-center justify-center py-0.5">
             {day ? (
               <button
                 type="button"
                 onClick={() => selectDay(day)}
-                className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors
+                className={`w-6 h-6 rounded-md text-[11px] font-medium transition-colors
                   ${isSelected(day) ? "bg-[#22c55e] text-black font-bold" : isToday(day) ? "border border-[#22c55e]/50 text-[#4ade80]" : "text-[#888] hover:bg-[#1a1a1a] hover:text-white"}`}
               >
                 {day}
               </button>
-            ) : (
-              <span />
-            )}
+            ) : <span />}
           </div>
         ))}
       </div>
       {/* Atalho hoje */}
-      <div className="mt-2 pt-2 border-t border-[#1a1a1a] flex justify-center">
+      <div className="mt-1 pt-1 border-t border-[#1a1a1a] flex justify-center">
         <button
           type="button"
           onClick={() => {
@@ -166,7 +164,7 @@ function MiniCalendar({ value, onChange }: { value: string; onChange: (v: string
             onChange(`${today.getFullYear()}-${mm}-${dd}`);
             setNav({ year: today.getFullYear(), month: today.getMonth() });
           }}
-          className="text-[10px] text-[#555] hover:text-[#22c55e] transition-colors"
+          className="text-[9px] text-[#555] hover:text-[#22c55e] transition-colors"
         >
           Hoje
         </button>
