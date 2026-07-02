@@ -725,14 +725,15 @@ export default function AgendamentosPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Tipo de Consulta</Label>
+              <Label>Tipo de Atendimento</Label>
+              <p className="text-[11px] text-[#555]">Propósito da consulta — ex: Primeira Consulta, Retorno, Reavaliação</p>
               {appointmentTypes.length > 0 ? (
                 <Select
                   value={form.consultationType}
                   onValueChange={(v) => setForm((p) => ({ ...p, consultationType: v }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo (opcional)" />
+                    <SelectValue placeholder="Selecione o tipo de atendimento" />
                   </SelectTrigger>
                   <SelectContent>
                     {appointmentTypes.map((type) => (
@@ -744,12 +745,13 @@ export default function AgendamentosPage() {
                 <Input
                   value={form.consultationType}
                   onChange={(e) => setForm((p) => ({ ...p, consultationType: e.target.value }))}
-                  placeholder="Ex: Consulta inicial, Retorno..."
+                  placeholder="Ex: Primeira Consulta, Retorno, Reavaliação..."
                 />
               )}
             </div>
             <div className="space-y-2">
               <Label>Modalidade</Label>
+              <p className="text-[11px] text-[#555]">Meio de realização — Presencial, Online ou Híbrido</p>
               <Select
                 value={form.appointmentModality}
                 onValueChange={(v) => setForm((p) => ({ ...p, appointmentModality: v }))}

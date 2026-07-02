@@ -648,14 +648,14 @@ export default function ConfiguracoesPage() {
               </form>
             </CardContent>
           </Card>
-          {/* Tipos de Consulta */}
+          {/* Tipos de Atendimento */}
           <Card>
             <CardHeader>
-              <CardTitle>Tipos de Consulta</CardTitle>
+              <CardTitle>Tipos de Atendimento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-[#666]">
-                Defina os tipos de consulta disponíveis para agendamento. Use a variável <span className="text-[#22c55e]">{"{tipo_consulta}"}</span> nos templates de mensagem.
+                Defina o <strong className="text-white">propósito</strong> do atendimento (ex: Primeira Consulta, Retorno, Reavaliação). Aparece na variável <span className="text-[#22c55e]">{"{tipo_consulta}"}</span> das mensagens automáticas. Não confundir com <strong className="text-white">Modalidade</strong> (Presencial/Online/Híbrido), que é um campo separado no agendamento.
               </p>
               {appointmentTypes.length === 0 && (
                 <p className="text-sm text-[#555] text-center py-4">Nenhum tipo cadastrado ainda.</p>
@@ -705,7 +705,7 @@ export default function ConfiguracoesPage() {
                   <Input
                     value={newAptType}
                     onChange={(e) => setNewAptType(e.target.value)}
-                    placeholder="Ex: Primeira Consulta, Retorno, Online..."
+                    placeholder="Ex: Primeira Consulta, Retorno, Reavaliação..."
                     required
                   />
                 </div>
