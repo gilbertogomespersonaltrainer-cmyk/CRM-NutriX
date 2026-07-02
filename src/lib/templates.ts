@@ -23,12 +23,13 @@ export function replaceTemplateVars(
 }
 
 export function formatDateBR(date: Date): string {
-  return date.toLocaleDateString("pt-BR");
+  return date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
 export function formatTimeBR(date: Date): string {
   return date.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
   });
 }

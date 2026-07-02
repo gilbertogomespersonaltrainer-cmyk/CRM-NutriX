@@ -65,7 +65,7 @@ function isSameDay(a: Date, b: Date) {
 
 function formatTime(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
 const WEEK_DAYS_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -251,7 +251,7 @@ export default function AgendamentosPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const scheduledAt = form.date && form.time ? `${form.date}T${form.time}` : "";
+      const scheduledAt = form.date && form.time ? `${form.date}T${form.time}:00-03:00` : "";
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -274,7 +274,7 @@ export default function AgendamentosPage() {
     if (!selectedApt || !rescheduleForm.date || !rescheduleForm.time) return;
     setRescheduleLoading(true);
     try {
-      const scheduledAt = `${rescheduleForm.date}T${rescheduleForm.time}`;
+      const scheduledAt = `${rescheduleForm.date}T${rescheduleForm.time}:00-03:00`;
       const res = await fetch(`/api/appointments/${selectedApt.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
