@@ -206,6 +206,10 @@ export default function AgendamentosPage() {
   const [rescheduling, setRescheduling] = useState(false);
   const [rescheduleForm, setRescheduleForm] = useState({ date: "", time: "" });
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [completeServiceId, setCompleteServiceId] = useState("");
+  const [completeLoading, setCompleteLoading] = useState(false);
+  const [serviceTypes, setServiceTypes] = useState<{ id: string; name: string; defaultPrice: number }[]>([]);
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
@@ -245,6 +249,9 @@ export default function AgendamentosPage() {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((d) => setAppointmentTypes(d.appointmentTypes || []));
+    fetch("/api/service-types")
+      .then((r) => r.json())
+      .then((d) => setServiceTypes(Array.isArray(d) ? d : []));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -359,6 +366,29 @@ export default function AgendamentosPage() {
     setSelectedApt(null);
     setRescheduling(false);
     setRescheduleForm({ date: "", time: "" });
+    setCompleting(false);
+    setCompleteServiceId("");
+  }
+
+  async function handleComplete() {
+    if (!selectedApt || !completeServiceId) return;
+    setCompleteLoading(true);
+    try {
+      const res = await fetch(`/api/appointments/${selectedApt.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED", serviceTypeId: completeServiceId }),
+      });
+      if (res.ok) {
+        toast({ title: "Consulta concluída e lançamento criado no financeiro!", variant: "success" });
+        closeAptModal();
+        fetchAppointments();
+      } else {
+        toast({ title: "Erro ao concluir consulta", variant: "error" });
+      }
+    } finally {
+      setCompleteLoading(false);
+    }
   }
 
   // Appointment detail modal
@@ -439,10 +469,34 @@ export default function AgendamentosPage() {
                   </Button>
                 </div>
               </div>
+            ) : completing ? (
+              <div className="p-4 border-t border-[#1e1e1e] space-y-3">
+                <p className="text-xs font-medium text-[#888]">Qual serviço foi realizado?</p>
+                <Select value={completeServiceId} onValueChange={setCompleteServiceId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o serviço..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {serviceTypes.map((st) => (
+                      <SelectItem key={st.id} value={st.id}>
+                        {st.name} — R$ {st.defaultPrice.toFixed(2).replace(".", ",")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-2">
+                  <Button size="sm" className="flex-1 text-xs" disabled={!completeServiceId || completeLoading} onClick={handleComplete}>
+                    {completeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirmar e lançar"}
+                  </Button>
+                  <Button variant="secondary" size="sm" className="text-xs" onClick={() => { setCompleting(false); setCompleteServiceId(""); }}>
+                    Voltar
+                  </Button>
+                </div>
+              </div>
             ) : (
               <div className="p-4 border-t border-[#1e1e1e] space-y-2">
                 <div className="flex gap-2">
-                  <Button size="sm" className="flex-1 text-xs" onClick={() => updateStatus(selectedApt.id, "COMPLETED")}>
+                  <Button size="sm" className="flex-1 text-xs" onClick={() => setCompleting(true)}>
                     Realizada
                   </Button>
                   <Button variant="ghost" size="sm" className="flex-1 text-xs text-[#f59e0b] hover:text-[#f59e0b]" onClick={() => updateStatus(selectedApt.id, "NO_SHOW")}>
