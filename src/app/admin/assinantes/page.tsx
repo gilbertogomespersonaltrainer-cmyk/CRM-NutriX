@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { Search, MoreVertical, Gift, Clock, UserPlus } from "lucide-react";
+import { Search, MoreVertical, Gift, Clock, UserPlus, Trash2 } from "lucide-react";
 
 type Tenant = {
   id: string;
@@ -60,6 +60,36 @@ export default function AssinantesPage() {
   const [trialDays, setTrialDays] = useState(7);
   const [showGift, setShowGift] = useState(false);
   const [showExtend, setShowExtend] = useState(false);
+
+  // Excluir conta
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+
+  async function handleDelete() {
+    if (!selected || deleteConfirmName !== selected.name) return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/admin/tenants", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantId: selected.id }),
+      });
+      if (res.ok) {
+        setTenants((prev) => prev.filter((t) => t.id !== selected.id));
+        setShowDelete(false);
+        setShowActions(false);
+        setSelected(null);
+        setDeleteConfirmName("");
+        toast({ title: "Conta excluída permanentemente", variant: "success" });
+      } else {
+        const data = await res.json();
+        toast({ title: data.error || "Erro ao excluir conta", variant: "error" });
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   // Criar conta
   const [showCreate, setShowCreate] = useState(false);
@@ -399,6 +429,50 @@ export default function AssinantesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDelete} onOpenChange={(open) => { setShowDelete(open); if (!open) setDeleteConfirmName(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-400">Excluir conta permanentemente</DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. Todos os dados do nutricionista serão apagados — pacientes, agendamentos, mensagens e financeiro.
+            </DialogDescription>
+          </DialogHeader>
+          {selected && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-sm text-red-300">
+                Você está prestes a excluir a conta de <strong>{selected.name}</strong> ({selected._count.patients} pacientes, {selected._count.appointments} agendamentos).
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-[#666] font-medium">
+                  Digite <span className="text-white font-mono">{selected.name}</span> para confirmar:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={selected.name}
+                  className="w-full bg-[#161616] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-red-500/50"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="danger"
+                  onClick={handleDelete}
+                  disabled={deleting || deleteConfirmName !== selected.name}
+                  className="flex-1"
+                >
+                  {deleting ? "Excluindo..." : "Excluir permanentemente"}
+                </Button>
+                <Button variant="secondary" onClick={() => setShowDelete(false)} disabled={deleting}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Actions Dialog */}
       <Dialog open={showActions} onOpenChange={setShowActions}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -562,6 +636,19 @@ export default function AssinantesPage() {
                     </Button>
                   )}
                 </div>
+              </div>
+
+              <div className="h-px bg-[#1e1e1e]" />
+
+              <div className="space-y-2">
+                <p className="text-xs text-[#666] font-medium uppercase tracking-wider">Zona de Perigo</p>
+                <button
+                  onClick={() => { setDeleteConfirmName(""); setShowDelete(true); }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-500/20 bg-red-500/5 text-sm text-red-400 hover:bg-red-500/10 transition-colors w-full"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir conta permanentemente
+                </button>
               </div>
             </div>
           )}

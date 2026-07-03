@@ -164,6 +164,20 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  const admin = await getAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { tenantId } = await req.json();
+  if (!tenantId) return NextResponse.json({ error: "tenantId obrigatório" }, { status: 400 });
+
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
+
+  await prisma.tenant.delete({ where: { id: tenantId } });
+  return NextResponse.json({ success: true });
+}
+
 export async function PATCH(req: NextRequest) {
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
