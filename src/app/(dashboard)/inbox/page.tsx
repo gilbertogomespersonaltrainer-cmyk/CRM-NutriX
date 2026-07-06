@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Search, Send, MessageCircle, User, Loader2, CheckCheck, Link2, Trash2 } from "lucide-react";
+import { Search, Send, MessageCircle, User, Loader2, CheckCheck, Link2, Trash2, SquarePen } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/toaster";
@@ -111,6 +111,13 @@ export default function InboxPage() {
   const [linking, setLinking] = useState(false);
   const [fixingLid, setFixingLid] = useState(false);
   const [deletingConv, setDeletingConv] = useState(false);
+  // Nova conversa
+  const [showNewConv, setShowNewConv] = useState(false);
+  const [newConvSearch, setNewConvSearch] = useState("");
+  const [newConvPatients, setNewConvPatients] = useState<{id:string;name:string;phone:string}[]>([]);
+  const [newConvPhone, setNewConvPhone] = useState("");
+  const [newConvMsg, setNewConvMsg] = useState("");
+  const [newConvSending, setNewConvSending] = useState(false);
   // controla se é o primeiro carregamento (mostra spinner) ou refresh silencioso
   const initialConvsLoad = useRef(true);
   const initialMsgsLoad = useRef<string | null>(null); // phone da conversa carregando pela 1ª vez
@@ -261,6 +268,53 @@ export default function InboxPage() {
     }
   }
 
+  // Busca pacientes para nova conversa
+  useEffect(() => {
+    if (!showNewConv) return;
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/patients?search=${encodeURIComponent(newConvSearch)}&includeLeads=true`);
+        if (res.ok) {
+          const data = await res.json();
+          setNewConvPatients((Array.isArray(data) ? data : []).slice(0, 20));
+        }
+      } catch { /* ignore */ }
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [newConvSearch, showNewConv]);
+
+  async function handleNewConvSend() {
+    const phone = newConvPhone.trim();
+    const msg = newConvMsg.trim();
+    if (!phone || !msg || newConvSending) return;
+    setNewConvSending(true);
+    try {
+      const digits = phone.replace(/\D/g, "");
+      const normalizedPhone = digits.length <= 11 ? `55${digits}` : digits;
+      const res = await fetch(`/api/inbox/${encodeURIComponent(normalizedPhone)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: msg }),
+      });
+      if (res.ok) {
+        toast({ title: "Mensagem enviada!", variant: "success" });
+        setShowNewConv(false);
+        setNewConvSearch("");
+        setNewConvPhone("");
+        setNewConvMsg("");
+        await fetchConversations();
+        selectConversation(normalizedPhone);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast({ title: data.error || "Erro ao enviar mensagem", variant: "error" });
+      }
+    } catch {
+      toast({ title: "Erro ao enviar mensagem", variant: "error" });
+    } finally {
+      setNewConvSending(false);
+    }
+  }
+
   const filteredConvs = conversations.filter(c => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -278,10 +332,20 @@ export default function InboxPage() {
         <div className="p-4 border-b border-[#1a1a1a]">
           <div className="flex items-center justify-between mb-3">
             <h1 className="font-outfit text-lg font-semibold text-white">Inbox</h1>
+            <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setShowNewConv(true); setNewConvSearch(""); setNewConvPhone(""); setNewConvMsg(""); setNewConvPatients([]); }}
+              className="flex items-center gap-1.5 text-xs text-[#22c55e] border border-[#22c55e]/20 bg-[#22c55e]/5 rounded-lg px-2.5 py-1.5 hover:bg-[#22c55e]/10 transition-colors"
+              title="Iniciar nova conversa"
+            >
+              <SquarePen className="h-3.5 w-3.5" />
+              Nova
+            </button>
             {conversations.some(c => isLidNumber(c.phone)) && (
               <button
                 onClick={async () => {
                   setFixingLid(true);
+
                   try {
                     const res = await fetch("/api/inbox/fix-lid-contacts", { method: "POST" });
                     const data = await res.json();
@@ -306,6 +370,7 @@ export default function InboxPage() {
                 Corrigir contatos
               </button>
             )}
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#555]" />
@@ -572,6 +637,94 @@ export default function InboxPage() {
           <p className="text-sm text-[#444] max-w-xs">
             Escolha uma conversa à esquerda para ver as mensagens e responder
           </p>
+        </div>
+      )}
+
+      {/* ─── Modal: Nova conversa ─── */}
+      {showNewConv && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h2 className="text-base font-semibold text-white mb-1">Nova conversa</h2>
+            <p className="text-xs text-[#555] mb-4">
+              Busque um paciente cadastrado ou digite o número diretamente.
+            </p>
+
+            {/* Busca de paciente */}
+            <p className="text-xs text-[#666] font-medium mb-1.5">Buscar paciente</p>
+            <input
+              type="text"
+              placeholder="Nome do paciente..."
+              value={newConvSearch}
+              onChange={e => setNewConvSearch(e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#22c55e]/40 mb-2"
+            />
+            {newConvSearch && (
+              <div className="space-y-1 max-h-36 overflow-y-auto mb-3">
+                {newConvPatients.length === 0 ? (
+                  <p className="text-xs text-[#555] text-center py-3">Nenhum paciente encontrado</p>
+                ) : (
+                  newConvPatients.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        const digits = p.phone.replace(/\D/g, "");
+                        setNewConvPhone(digits.length <= 11 ? `55${digits}` : digits);
+                        setNewConvSearch(p.name);
+                        setNewConvPatients([]);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-[#1a1a1a] hover:bg-[#22c55e]/10 border border-transparent hover:border-[#22c55e]/20 text-left transition-colors"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center text-[#4ade80] font-bold text-xs flex-shrink-0">
+                        {p.name[0]?.toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white font-medium truncate">{p.name}</p>
+                        <p className="text-xs text-[#555] truncate">{p.phone}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Número manual */}
+            <p className="text-xs text-[#666] font-medium mb-1.5 mt-3">Número WhatsApp</p>
+            <input
+              type="text"
+              placeholder="Ex: 5511999999999 ou (11) 99999-9999"
+              value={newConvPhone}
+              onChange={e => setNewConvPhone(e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#22c55e]/40 mb-3"
+            />
+
+            {/* Mensagem */}
+            <p className="text-xs text-[#666] font-medium mb-1.5">Mensagem</p>
+            <textarea
+              placeholder="Digite a mensagem..."
+              value={newConvMsg}
+              onChange={e => setNewConvMsg(e.target.value)}
+              rows={3}
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#22c55e]/40 resize-none mb-4"
+            />
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleNewConvSend}
+                disabled={!newConvPhone.trim() || !newConvMsg.trim() || newConvSending}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#22c55e] text-black text-sm font-semibold hover:bg-[#16a34a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {newConvSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {newConvSending ? "Enviando..." : "Enviar"}
+              </button>
+              <button
+                onClick={() => setShowNewConv(false)}
+                disabled={newConvSending}
+                className="px-4 py-2.5 rounded-xl border border-[#2a2a2a] text-[#555] text-sm hover:border-[#333] hover:text-[#888] transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
