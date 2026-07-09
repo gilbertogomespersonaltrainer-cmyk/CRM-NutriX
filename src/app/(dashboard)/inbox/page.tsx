@@ -202,10 +202,9 @@ export default function InboxPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const msg = await res.json();
-        setMessages(prev => [...prev, msg]);
-        // Update last message in conversation list
+        setMessages(prev => [...prev, data]);
         setConversations(prev =>
           prev.map(c =>
             c.phone === selectedPhone
@@ -213,8 +212,10 @@ export default function InboxPage() {
               : c
           )
         );
+        if (data.sendError) {
+          toast({ title: "Mensagem salva, mas não foi entregue. Verifique se o WhatsApp está conectado.", variant: "error" });
+        }
       } else {
-        const data = await res.json().catch(() => ({}));
         toast({ title: data.error || "Erro ao enviar mensagem", variant: "error" });
         setReply(text);
       }
@@ -296,8 +297,13 @@ export default function InboxPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: msg }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        toast({ title: "Mensagem enviada!", variant: "success" });
+        if (data.sendError) {
+          toast({ title: "Conversa criada, mas mensagem não foi entregue. Verifique se o WhatsApp está conectado.", variant: "error" });
+        } else {
+          toast({ title: "Mensagem enviada!", variant: "success" });
+        }
         setShowNewConv(false);
         setNewConvSearch("");
         setNewConvPhone("");
@@ -305,7 +311,6 @@ export default function InboxPage() {
         await fetchConversations();
         selectConversation(normalizedPhone);
       } else {
-        const data = await res.json().catch(() => ({}));
         toast({ title: data.error || "Erro ao enviar mensagem", variant: "error" });
       }
     } catch {

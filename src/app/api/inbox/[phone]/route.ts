@@ -51,8 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ phone: 
       return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });
     }
 
-    // Busca o chatId original da conversa (JID do WAHA) para garantir entrega correta
-    // Especialmente importante para contas com LID (Linked ID) em vez de número padrão
+    // Busca o chatId original da conversa para garantir entrega correta (LID)
     const lastMsg = await prisma.inboxMessage.findFirst({
       where: { tenantId, phone, fromMe: false, chatId: { not: null } },
       orderBy: { timestamp: "desc" },
@@ -61,10 +60,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ phone: 
 
     const chatId = lastMsg?.chatId ?? null;
 
-    // Envia via WAHA usando chatId original se disponível, senão usa phone
-    await evoSendText(tenantId, phone, body.trim(), chatId ?? undefined);
-
-    // Salva no inbox
+    // Salva no inbox primeiro — mensagem aparece na tela independente do resultado da Evolution
     const msg = await prisma.inboxMessage.create({
       data: {
         tenantId,
@@ -76,6 +72,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ phone: 
         read: true,
       },
     });
+
+    // Envia via Evolution API (não-bloqueante para a resposta ao cliente)
+    try {
+      await evoSendText(tenantId, phone, body.trim(), chatId ?? undefined);
+    } catch (evoErr) {
+      console.error("[inbox/send] Evolution API falhou:", evoErr);
+      // Retorna a mensagem salva mas com flag de erro para o cliente mostrar aviso
+      return NextResponse.json({ ...msg, sendError: true });
+    }
 
     return NextResponse.json(msg);
   } catch (err) {
