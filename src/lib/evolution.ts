@@ -145,25 +145,34 @@ export async function evoSendText(
 ) {
   const instance = evoInstanceName(tenantId);
 
+  // Usa EVOLUTION_URL com fallback para EVOLUTION_API_URL
+  const baseUrl = (EVOLUTION_URL || process.env.EVOLUTION_API_URL || "").replace(/\/$/, "");
+
   let number: string;
   if (rawChatId && !rawChatId.endsWith("@lid")) {
-    // Usa o JID direto se não for LID
     number = rawChatId.replace(/@\S+/g, "");
   } else {
     const digits = phone.replace(/\D/g, "");
     number = digits.startsWith("55") ? digits : `55${digits}`;
   }
 
-  const res = await evoFetch(`${EVOLUTION_URL}/message/sendText/${instance}`, {
+  const url = `${baseUrl}/message/sendText/${instance}`;
+  const payload = { number, text: message };
+
+  console.log(`[evoSendText] url=${url} instance=${instance} number=${number} chatId=${rawChatId ?? "none"}`);
+
+  const res = await evoFetch(url, {
     method: "POST",
     headers: evoHeaders(),
-    body: JSON.stringify({ number, text: message }),
+    body: JSON.stringify(payload),
   });
 
+  const responseBody = await res.json().catch(() => ({}));
+  console.log(`[evoSendText] status=${res.status} response=${JSON.stringify(responseBody).slice(0, 300)}`);
+
   if (!res.ok) {
-    const errBody = await res.json().catch(() => ({}));
-    throw new Error(`Evolution sendText falhou (${res.status}): ${JSON.stringify(errBody)}`);
+    throw new Error(`Evolution sendText falhou (${res.status}): ${JSON.stringify(responseBody)}`);
   }
 
-  return res.json();
+  return responseBody;
 }
