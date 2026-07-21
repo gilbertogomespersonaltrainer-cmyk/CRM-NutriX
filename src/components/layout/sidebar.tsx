@@ -16,7 +16,6 @@ const navigation = [
   { name: "Agendamentos", href: "/agendamentos", icon: "calendar" as const, variant: "cyan" as const },
   { name: "Financeiro", href: "/financeiro", icon: "dollar" as const, variant: "emerald" as const },
   { name: "Pós Consulta", href: "/pos-consulta", icon: "messageCircle" as const, variant: "green" as const },
-  { name: "Inbox", href: "/inbox", icon: "messageCircle" as const, variant: "green" as const },
   { name: "Mensagens", href: "/mensagens", icon: "messageCircle" as const, variant: "green" as const },
   { name: "Documentos", href: "/documentos", icon: "fileText" as const, variant: "blue" as const },
   { name: "Relatórios", href: "/relatorios", icon: "trendingUp" as const, variant: "emerald" as const },
@@ -27,8 +26,6 @@ export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [whatsappStatus, setWhatsappStatus] = useState("DISCONNECTED");
-  const [inboxUnread, setInboxUnread] = useState(0);
-
   useEffect(() => {
     async function fetchStatus() {
       try {
@@ -43,22 +40,6 @@ export function Sidebar() {
     }
     fetchStatus();
     const interval = setInterval(fetchStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    async function fetchUnread() {
-      try {
-        const res = await fetch("/api/inbox");
-        if (res.ok) {
-          const data = await res.json();
-          const total = Array.isArray(data) ? data.reduce((sum: number, c: { unread: number }) => sum + c.unread, 0) : 0;
-          setInboxUnread(total);
-        }
-      } catch { /* ignore */ }
-    }
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -108,11 +89,6 @@ export function Sidebar() {
               )}>
                 {item.name}
               </span>
-              {item.href === "/inbox" && inboxUnread > 0 && (
-                <span className="ml-auto bg-[#22c55e] text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                  {inboxUnread > 99 ? "99+" : inboxUnread}
-                </span>
-              )}
             </Link>
           );
         })}
