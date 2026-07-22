@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/admin/financeiro", label: "Financeiro", icon: "trendingUp" as const },
   { href: "/admin/relatorios", label: "Relatórios", icon: "clipboard" as const },
   { href: "/admin/planos", label: "Planos", icon: "receipt" as const },
+  { href: "/admin/admins", label: "Administradores", icon: "settings" as const },
 ];
 
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
