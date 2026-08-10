@@ -81,14 +81,26 @@ enum SubscriptionStatus {
 }
 
 model AdminUser {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String           @id @default(cuid())
+  name        String
+  email       String           @unique
+  password    String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  resetTokens AdminResetToken[]
 
   @@map("admin_users")
+}
+
+model AdminResetToken {
+  id        String    @id @default(cuid())
+  adminId   String
+  token     String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  admin     AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("admin_reset_tokens")
 }
 
 model Plan {

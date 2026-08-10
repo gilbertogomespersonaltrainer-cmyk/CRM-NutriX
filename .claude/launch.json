@@ -12,6 +12,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "/Users/gilbertogomesdelima/Documents/NutriX/nutrix-landing", "-p", "4000"],
       "port": 4000
+    },
+    {
+      "name": "Loja Artefatos",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/gilbertogomesdelima/Documents/loja-artefatos && npm run dev -- -p 5050"],
+      "port": 5050
     }
   ]
 }
