@@ -42,7 +42,7 @@ type Plan = {
 
 const STATUS_MAP: Record<string, { label: string; variant: "active" | "pending" | "overdue" | "inactive" }> = {
   ACTIVE: { label: "Ativo", variant: "active" },
-  TRIAL: { label: "Trial", variant: "pending" },
+  TRIAL: { label: "Em avaliação", variant: "pending" },
   PAST_DUE: { label: "Inadimplente", variant: "overdue" },
   CANCELLED: { label: "Cancelado", variant: "inactive" },
   EXPIRED: { label: "Expirado", variant: "inactive" },
@@ -173,7 +173,7 @@ export default function AssinantesPage() {
   const statusFilters = [
     { key: "", label: "Todos" },
     { key: "ACTIVE", label: "Ativos" },
-    { key: "TRIAL", label: "Trial" },
+    { key: "TRIAL", label: "Em avaliação" },
     { key: "PAST_DUE", label: "Inadimplentes" },
     { key: "CANCELLED", label: "Cancelados" },
   ];

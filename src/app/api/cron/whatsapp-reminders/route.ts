@@ -8,9 +8,6 @@ function authorizeCron(req: Request): boolean {
   return secret === process.env.CRON_SECRET;
 }
 
-function isProfessionalPlan(tenant: { subscription?: { plan?: { name: string } | null } | null }): boolean {
-  return (tenant.subscription?.plan?.name ?? "").toLowerCase().includes("professional");
-}
 
 async function sendTemplateMessage(
   tenantId: string,
@@ -241,8 +238,6 @@ async function sendReactivation() {
 
     for (const patient of patients) {
       if (patient.tenant.whatsappStatus !== "CONNECTED") continue;
-      // Reativação de 60 e 90 dias é exclusiva do plano Professional
-      if (range.days > 30 && !isProfessionalPlan(patient.tenant)) continue;
 
       const template = await prisma.messageTemplate.findUnique({
         where: { tenantId_type: { tenantId: patient.tenantId, type: range.type } },

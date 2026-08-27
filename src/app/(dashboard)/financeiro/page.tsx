@@ -31,7 +31,6 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingDown,
-  Lock,
   MoreVertical,
   Trash2,
   CheckCircle,
@@ -42,6 +41,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+const paymentMethodLabels: Record<string, string> = {
+  PIX: "Pix",
+  Pix: "Pix",
+  CREDIT_CARD: "Cartão de crédito",
+  DEBIT_CARD: "Cartão de débito",
+  CASH: "Dinheiro",
+  TRANSFER: "Transferência",
+};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,11 +101,6 @@ type ChartData = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function isProfessional(plan?: string): boolean {
-  if (!plan) return false;
-  return plan.toLowerCase().includes("professional");
-}
 
 function shortCurrency(v: number): string {
   if (v >= 1000) return `R$${(v / 1000).toFixed(1)}k`;
@@ -327,7 +330,6 @@ function HorizontalBars({ data }: { data: Record<string, number> | undefined }) 
 
 export default function FinanceiroPage() {
   const { data: session } = useSession();
-  const isPro = isProfessional(session?.user?.subscriptionPlan);
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -639,18 +641,10 @@ export default function FinanceiroPage() {
               </span>
             )}
           </div>
-          <MonthlyChart data={chartData?.monthly} isPro={isPro} />
+          <MonthlyChart data={chartData?.monthly} isPro={true} />
         </div>
 
-        {/* Detailed charts — Professional only */}
-        <div className="relative">
-          {/* Charts (blurred when not Pro) */}
-          <div
-            className={cn(
-              "grid grid-cols-1 md:grid-cols-2 gap-4",
-              !isPro && "blur-sm opacity-40 pointer-events-none select-none"
-            )}
-          >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl p-5">
               <p className="text-sm font-semibold text-white mb-4">
                 Receita por Tipo de Serviço
@@ -664,34 +658,6 @@ export default function FinanceiroPage() {
               <HorizontalBars data={chartData?.byMethod} />
             </div>
           </div>
-
-          {/* Lock overlay */}
-          {!isPro && (
-            <div className="absolute inset-0 flex items-center justify-center z-10">
-              <div className="bg-[#111]/95 border border-[#1e1e1e] rounded-xl px-8 py-5 flex flex-col items-center gap-3 shadow-2xl">
-                <div className="w-9 h-9 rounded-full bg-[#1a1a1a] flex items-center justify-center">
-                  <Lock className="h-4 w-4 text-[#555]" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-white">
-                    Disponível no Professional
-                  </p>
-                  <p className="text-xs text-[#666] mt-1">
-                    Gráficos detalhados por serviço e forma de pagamento
-                  </p>
-                </div>
-                <a
-                  href="https://pay.hotmart.com/H105769412F?off=6rficksd"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 px-5 py-1.5 rounded-lg bg-[#22c55e] text-black text-xs font-bold hover:bg-[#16a34a] transition-colors"
-                >
-                  Fazer upgrade
-                </a>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* ------------------------------------------------------------------ */}
@@ -762,7 +728,7 @@ export default function FinanceiroPage() {
                           {p.patient.name}
                         </p>
                         <p className="text-xs text-[#666]">
-                          {p.serviceType.name} · {p.paymentMethod} ·{" "}
+                          {p.serviceType.name} · {paymentMethodLabels[p.paymentMethod] || p.paymentMethod} ·{" "}
                           {formatDate(p.createdAt)}
                         </p>
                       </div>

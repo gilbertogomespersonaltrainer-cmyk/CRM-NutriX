@@ -21,8 +21,6 @@ import {
   Pencil,
   Check,
   Trash2,
-  Lock,
-  Zap,
 } from "lucide-react";
 
 type PatientStage = "LEAD" | "FIRST_CONSULTATION" | "ACTIVE" | "INACTIVE" | "REACTIVATED";
@@ -272,12 +270,10 @@ function SettingsModal({
   columns,
   onSave,
   onClose,
-  isPro,
 }: {
   columns: ColumnConfig[];
   onSave: (cols: ColumnConfig[]) => void;
   onClose: () => void;
-  isPro: boolean;
 }) {
   const [draft, setDraft] = useState<ColumnConfig[]>(columns.map((c) => ({ ...c })));
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -385,23 +381,13 @@ function SettingsModal({
           ))}
 
           {/* Add new column button */}
-          {isPro ? (
-            <button
-              onClick={addCustomColumn}
-              className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-[#2a2a2a] text-[#555] hover:text-[#888] hover:border-[#333] transition-colors text-sm"
-            >
-              <Plus className="h-4 w-4" />
-              Nova coluna
-            </button>
-          ) : (
-            <div className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-[#1e1e1e] text-[#444] cursor-not-allowed text-sm select-none">
-              <Lock className="h-3.5 w-3.5 text-[#f59e0b]" />
-              Nova coluna
-              <span className="flex items-center gap-0.5 text-[9px] font-bold text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-1.5 py-0.5 rounded">
-                <Zap className="h-2.5 w-2.5" />Professional
-              </span>
-            </div>
-          )}
+          <button
+            onClick={addCustomColumn}
+            className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-[#2a2a2a] text-[#555] hover:text-[#888] hover:border-[#333] transition-colors text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Nova coluna
+          </button>
         </div>
 
         <div className="flex items-center justify-between p-4 border-t border-[#1e1e1e]">
@@ -421,7 +407,6 @@ function SettingsModal({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function PipelinePage() {
   const { data: session } = useSession();
-  const isPro = (session?.user?.subscriptionPlan ?? "").toLowerCase().includes("professional");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -511,11 +496,6 @@ export default function PipelinePage() {
     if (!col) return;
 
     if (col.isCustom) {
-      // Custom column: requer plano Professional
-      if (!isPro) {
-        toast({ title: "Colunas customizadas são exclusivas do plano Professional", variant: "error" });
-        return;
-      }
       const prevCustomKey = customPositions[patientId]?.col;
       if (prevCustomKey === colKey) return;
 
@@ -709,7 +689,6 @@ export default function PipelinePage() {
           columns={columns}
           onSave={handleSaveColumns}
           onClose={() => setShowSettings(false)}
-          isPro={isPro}
         />
       )}
     </div>

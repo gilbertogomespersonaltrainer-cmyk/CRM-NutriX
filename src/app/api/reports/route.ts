@@ -34,9 +34,17 @@ export async function GET(req: Request) {
         byServiceType[name] = (byServiceType[name] || 0) + p.finalAmount;
       });
 
+      const paymentMethodLabels: Record<string, string> = {
+        PIX: "Pix",
+        CREDIT_CARD: "Cartão de crédito",
+        DEBIT_CARD: "Cartão de débito",
+        CASH: "Dinheiro",
+        TRANSFER: "Transferência",
+      };
       const byMethod: Record<string, number> = {};
       payments.filter(p => p.status === "PAID").forEach(p => {
-        byMethod[p.paymentMethod] = (byMethod[p.paymentMethod] || 0) + p.finalAmount;
+        const label = paymentMethodLabels[p.paymentMethod] || p.paymentMethod;
+        byMethod[label] = (byMethod[label] || 0) + p.finalAmount;
       });
 
       return NextResponse.json({

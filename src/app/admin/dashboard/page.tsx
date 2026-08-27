@@ -27,7 +27,7 @@ type DashboardData = {
 
 const STATUS_MAP: Record<string, { label: string; variant: "active" | "pending" | "overdue" | "inactive" }> = {
   ACTIVE: { label: "Ativo", variant: "active" },
-  TRIAL: { label: "Trial", variant: "pending" },
+  TRIAL: { label: "Em avaliação", variant: "pending" },
   PAST_DUE: { label: "Inadimplente", variant: "overdue" },
   CANCELLED: { label: "Cancelado", variant: "inactive" },
   EXPIRED: { label: "Expirado", variant: "inactive" },
@@ -57,7 +57,7 @@ export default function AdminDashboardPage() {
   const stats = [
     { label: "Total Assinantes", value: data.totalTenants, icon: "users" as const },
     { label: "Ativos", value: data.activeSubs, icon: "userCheck" as const },
-    { label: "Trial", value: data.trialSubs, icon: "clipboard" as const },
+    { label: "Em avaliação", value: data.trialSubs, icon: "clipboard" as const },
     { label: "Inadimplentes", value: data.pastDueSubs, icon: "alert" as const },
     { label: "MRR", value: formatCurrency(data.mrrTotal), icon: "trendingUp" as const },
     { label: "Novos no Mês", value: data.newThisMonth, icon: "userPlus" as const },

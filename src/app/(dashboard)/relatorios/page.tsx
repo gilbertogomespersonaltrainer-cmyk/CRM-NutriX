@@ -16,8 +16,6 @@ import {
   Users,
   FileText,
   ChevronDown,
-  Lock,
-  Zap,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -117,21 +115,8 @@ function downloadFile(content: string, filename: string, mime: string) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-// Advanced reports require Professional plan
-// Relatórios completamente bloqueados para Essential (sem visualização)
-const ADVANCED_REPORTS: ReportType[] = ["defaulters"];
-// Relatórios visíveis para Essential mas sem exportação
-const EXPORT_ONLY_PRO: ReportType[] = ["financial"];
-
-function isProfessional(plan?: string): boolean {
-  if (!plan) return false;
-  return plan.toLowerCase().includes("professional");
-}
-
 export default function RelatoriosPage() {
   const { data: session } = useSession();
-  const plan = session?.user?.subscriptionPlan;
-  const isPro = isProfessional(plan);
 
   // Datas inicializadas vazias para evitar mismatch de hidratação SSR↔client
   // (servidor usa UTC, cliente usa horário local do Brasil)
@@ -153,7 +138,6 @@ export default function RelatoriosPage() {
 
   const fetchReport = useCallback(async () => {
     if (!startDate || !endDate) return; // aguarda inicialização client-side
-    if (ADVANCED_REPORTS.includes(reportType) && !isPro) return;
     setLoading(true);
     setFetchError(null);
     setData(null);
@@ -170,7 +154,7 @@ export default function RelatoriosPage() {
     } finally {
       setLoading(false);
     }
-  }, [reportType, startDate, endDate, isPro]);
+  }, [reportType, startDate, endDate]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
@@ -235,13 +219,11 @@ export default function RelatoriosPage() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  // advanced=true → aba bloqueada para Essential (sem acesso)
-  // exportLocked=true → Essential pode visualizar mas não exportar
-  const tabs: { key: ReportType; label: string; icon: "dollar" | "alert" | "calendar" | "users"; advanced: boolean; exportLocked?: boolean }[] = [
-    { key: "appointments", label: "Consultas", icon: "calendar", advanced: false },
-    { key: "patients", label: "Pacientes", icon: "users", advanced: false },
-    { key: "financial", label: "Financeiro", icon: "dollar", advanced: false, exportLocked: true },
-    { key: "defaulters", label: "Inadimplentes", icon: "alert", advanced: true },
+  const tabs: { key: ReportType; label: string; icon: "dollar" | "alert" | "calendar" | "users" }[] = [
+    { key: "appointments", label: "Consultas", icon: "calendar" },
+    { key: "patients", label: "Pacientes", icon: "users" },
+    { key: "financial", label: "Financeiro", icon: "dollar" },
+    { key: "defaulters", label: "Inadimplentes", icon: "alert" },
   ];
 
   return (
@@ -253,15 +235,15 @@ export default function RelatoriosPage() {
           <p className="text-sm text-[#666] mt-1">Análise completa do seu consultório</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={exportCSV} disabled={!data || loading || (ADVANCED_REPORTS.includes(reportType) && !isPro) || (EXPORT_ONLY_PRO.includes(reportType) && !isPro)}>
+          <Button variant="secondary" size="sm" onClick={exportCSV} disabled={!data || loading}>
             <Download className="h-3.5 w-3.5" />
             CSV
           </Button>
-          <Button variant="secondary" size="sm" onClick={exportXML} disabled={!data || loading || (ADVANCED_REPORTS.includes(reportType) && !isPro) || (EXPORT_ONLY_PRO.includes(reportType) && !isPro)}>
+          <Button variant="secondary" size="sm" onClick={exportXML} disabled={!data || loading}>
             <Download className="h-3.5 w-3.5" />
             XML
           </Button>
-          <Button variant="secondary" size="sm" onClick={handlePrint} disabled={!data || loading || (ADVANCED_REPORTS.includes(reportType) && !isPro) || (EXPORT_ONLY_PRO.includes(reportType) && !isPro)}>
+          <Button variant="secondary" size="sm" onClick={handlePrint} disabled={!data || loading}>
             <Printer className="h-3.5 w-3.5" />
             Imprimir
           </Button>
@@ -320,77 +302,23 @@ export default function RelatoriosPage() {
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-1 border-b border-[#1e1e1e] print:hidden">
-        {/* Label separators */}
         <div className="w-full flex items-center gap-1 flex-wrap">
-          {tabs.map((t, i) => {
-            const locked = t.advanced && !isPro;
-            const isFirst = i === 0;
-            const firstAdvanced = tabs.findIndex(x => x.advanced);
-            return (
-              <div key={t.key} className="relative flex items-center">
-                {/* "Avançado" label before first advanced tab */}
-                {i === firstAdvanced && (
-                  <span className="flex items-center gap-1 mr-2 ml-3 text-[10px] font-bold text-[#f59e0b] uppercase tracking-wider">
-                    <Zap className="h-3 w-3" /> Professional
-                  </span>
-                )}
-                {i === 0 && (
-                  <span className="flex items-center gap-1 mr-2 text-[10px] font-bold text-[#555] uppercase tracking-wider">
-                    Básico
-                  </span>
-                )}
-                <button
-                  onClick={() => {
-                    if (locked) return;
-                    setData(null);
-                    setFetchError(null);
-                    setReportType(t.key);
-                  }}
-                  title={locked ? "Disponível no plano Professional" : undefined}
-                  className={`flex items-center gap-2.5 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
-                    locked
-                      ? "border-transparent text-[#444] cursor-not-allowed"
-                      : reportType === t.key
-                      ? "border-[#22c55e] text-white"
-                      : "border-transparent text-[#666] hover:text-white"
-                  }`}
-                >
-                  <GlassIcon icon={t.icon} size="sm" className={reportType !== t.key || locked ? "opacity-40" : ""} />
-                  {t.label}
-                  {locked && <Lock className="h-3 w-3 text-[#f59e0b] ml-0.5" />}
-                  {t.exportLocked && !isPro && !locked && (
-                    <span className="flex items-center gap-0.5 text-[9px] font-bold text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-1 py-0.5 rounded ml-0.5">
-                      <Lock className="h-2.5 w-2.5" />export
-                    </span>
-                  )}
-                </button>
-              </div>
-            );
-          })}
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => { setData(null); setFetchError(null); setReportType(t.key); }}
+              className={`flex items-center gap-2.5 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
+                reportType === t.key
+                  ? "border-[#22c55e] text-white"
+                  : "border-transparent text-[#666] hover:text-white"
+              }`}
+            >
+              <GlassIcon icon={t.icon} size="sm" className={reportType !== t.key ? "opacity-40" : ""} />
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
-
-      {/* Upgrade banner — shown when advanced tab is selected but not Pro */}
-      {ADVANCED_REPORTS.includes(reportType) && !isPro && (
-        <div className="rounded-2xl border border-[#f59e0b]/20 bg-[#f59e0b]/5 p-6 text-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-[#f59e0b]/10 border border-[#f59e0b]/20 flex items-center justify-center mx-auto">
-            <Lock className="h-5 w-5 text-[#f59e0b]" />
-          </div>
-          <h3 className="text-white font-bold">Este relatório é exclusivo do plano Professional</h3>
-          <p className="text-sm text-[#888] max-w-sm mx-auto">
-            Acesse relatórios Financeiros e de Inadimplentes com análise completa, gráficos e exportação de dados.
-          </p>
-          <a
-            href="https://pay.hotmart.com/H105769412F?off=6rficksd"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-[#f59e0b] hover:bg-[#d97706] text-black font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
-          >
-            <Zap className="h-4 w-4" />
-            Fazer upgrade para Professional
-          </a>
-        </div>
-      )}
 
       {/* Loading */}
       {loading && (
