@@ -208,6 +208,10 @@ export default function AgendamentosPage() {
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completeServiceId, setCompleteServiceId] = useState("");
+  const [completePaymentMethod, setCompletePaymentMethod] = useState("");
+  const [completeAmount, setCompleteAmount] = useState("");
+  const [completeDiscount, setCompleteDiscount] = useState("0");
+  const [completeNotes, setCompleteNotes] = useState("");
   const [completeLoading, setCompleteLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<{ id: string; name: string; defaultPrice: number }[]>([]);
 
@@ -368,19 +372,30 @@ export default function AgendamentosPage() {
     setRescheduleForm({ date: "", time: "" });
     setCompleting(false);
     setCompleteServiceId("");
+    setCompletePaymentMethod("");
+    setCompleteAmount("");
+    setCompleteDiscount("0");
+    setCompleteNotes("");
   }
 
   async function handleComplete() {
-    if (!selectedApt || !completeServiceId) return;
+    if (!selectedApt || !completeServiceId || !completePaymentMethod) return;
     setCompleteLoading(true);
     try {
       const res = await fetch(`/api/appointments/${selectedApt.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "COMPLETED", serviceTypeId: completeServiceId }),
+        body: JSON.stringify({
+          status: "COMPLETED",
+          serviceTypeId: completeServiceId,
+          paymentMethod: completePaymentMethod,
+          totalAmount: parseFloat(completeAmount) || undefined,
+          discountAmount: parseFloat(completeDiscount) || 0,
+          notes: completeNotes || undefined,
+        }),
       });
       if (res.ok) {
-        toast({ title: "Consulta concluída e lançamento criado no financeiro!", variant: "success" });
+        toast({ title: "Consulta concluída e pagamento registrado!", variant: "success" });
         closeAptModal();
         fetchAppointments();
       } else {
@@ -469,12 +484,16 @@ export default function AgendamentosPage() {
                   </Button>
                 </div>
               </div>
-            ) : completing ? (
+            ) : (
               <div className="p-4 border-t border-[#1e1e1e] space-y-3">
-                <p className="text-xs font-medium text-[#888]">Qual serviço foi realizado?</p>
-                <Select value={completeServiceId} onValueChange={setCompleteServiceId}>
+                <p className="text-xs font-medium text-[#888] uppercase tracking-wide">Registrar pagamento</p>
+                <Select value={completeServiceId} onValueChange={(v) => {
+                  setCompleteServiceId(v);
+                  const st = serviceTypes.find(s => s.id === v);
+                  if (st) setCompleteAmount(st.defaultPrice.toFixed(2));
+                }}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o serviço..." />
+                    <SelectValue placeholder="Serviço realizado..." />
                   </SelectTrigger>
                   <SelectContent>
                     {serviceTypes.map((st) => (
@@ -484,21 +503,59 @@ export default function AgendamentosPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="flex gap-2">
-                  <Button size="sm" className="flex-1 text-xs" disabled={!completeServiceId || completeLoading} onClick={handleComplete}>
-                    {completeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirmar e lançar"}
-                  </Button>
-                  <Button variant="secondary" size="sm" className="text-xs" onClick={() => { setCompleting(false); setCompleteServiceId(""); }}>
-                    Voltar
-                  </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-[#555] uppercase tracking-wide">Valor (R$)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={completeAmount}
+                      onChange={(e) => setCompleteAmount(e.target.value)}
+                      placeholder="0,00"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-[#555] uppercase tracking-wide">Desconto (R$)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={completeDiscount}
+                      onChange={(e) => setCompleteDiscount(e.target.value)}
+                      placeholder="0,00"
+                      className="text-sm"
+                    />
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="p-4 border-t border-[#1e1e1e] space-y-2">
+                {completeAmount && (
+                  <p className="text-xs text-[#22c55e] font-medium">
+                    Total: R$ {(Math.max(0, parseFloat(completeAmount || "0") - parseFloat(completeDiscount || "0"))).toFixed(2).replace(".", ",")}
+                  </p>
+                )}
+                <Select value={completePaymentMethod} onValueChange={setCompletePaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Forma de pagamento..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pix">Pix</SelectItem>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="Cartão de crédito">Cartão de crédito</SelectItem>
+                    <SelectItem value="Cartão de débito">Cartão de débito</SelectItem>
+                    <SelectItem value="Transferência">Transferência</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={completeNotes}
+                  onChange={(e) => setCompleteNotes(e.target.value)}
+                  placeholder="Observações (opcional)..."
+                  className="text-sm"
+                />
+                <Button size="sm" className="w-full text-xs" disabled={!completeServiceId || !completePaymentMethod || !completeAmount || completeLoading} onClick={handleComplete}>
+                  {completeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirmar como Realizada e Lançar"}
+                </Button>
                 <div className="flex gap-2">
-                  <Button size="sm" className="flex-1 text-xs" onClick={() => setCompleting(true)}>
-                    Realizada
-                  </Button>
                   <Button variant="ghost" size="sm" className="flex-1 text-xs text-[#f59e0b] hover:text-[#f59e0b]" onClick={() => updateStatus(selectedApt.id, "NO_SHOW")}>
                     Faltou
                   </Button>

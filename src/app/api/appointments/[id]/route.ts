@@ -49,26 +49,41 @@ export async function PUT(
         data: { lastAppointmentAt: new Date(), isActive: true, ...stageUpdate },
       });
 
-      // Cria lançamento financeiro automático se um serviço foi informado
+      // Cria lançamento financeiro automático já como PAGO
       if (body.serviceTypeId) {
         const serviceType = await prisma.serviceType.findFirst({
           where: { id: body.serviceTypeId, tenantId },
         });
         if (serviceType) {
-          await prisma.payment.create({
+          const totalAmount = body.totalAmount ?? serviceType.defaultPrice;
+          const discountAmount = body.discountAmount ?? 0;
+          const finalAmount = Math.max(0, totalAmount - discountAmount);
+          const payment = await prisma.payment.create({
             data: {
               tenantId,
               patientId: existing.patientId,
               appointmentId: id,
               serviceTypeId: serviceType.id,
-              description: `${serviceType.name} — gerado automaticamente ao concluir consulta`,
-              totalAmount: serviceType.defaultPrice,
-              discountAmount: 0,
-              finalAmount: serviceType.defaultPrice,
+              description: `${serviceType.name} — registrado ao concluir consulta`,
+              notes: body.notes || null,
+              totalAmount,
+              discountAmount,
+              finalAmount,
               modality: "AVISTA",
               installmentCount: 1,
-              paymentMethod: "A definir",
-              status: "PENDING",
+              paymentMethod: body.paymentMethod || "Pix",
+              status: "PAID",
+            },
+          });
+          await prisma.installment.create({
+            data: {
+              paymentId: payment.id,
+              tenantId,
+              installmentNumber: 1,
+              amount: finalAmount,
+              dueDate: new Date(),
+              status: "PAID",
+              paidAt: new Date(),
             },
           });
         }
