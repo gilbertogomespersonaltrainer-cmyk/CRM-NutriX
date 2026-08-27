@@ -55,6 +55,16 @@ export async function PUT(
           where: { id: body.serviceTypeId, tenantId },
         });
         if (serviceType) {
+          // Remove pagamentos pendentes duplicados para este agendamento
+          const pendingPayments = await prisma.payment.findMany({
+            where: { appointmentId: id, tenantId, status: "PENDING" },
+            select: { id: true },
+          });
+          if (pendingPayments.length > 0) {
+            const ids = pendingPayments.map((p) => p.id);
+            await prisma.installment.deleteMany({ where: { paymentId: { in: ids } } });
+            await prisma.payment.deleteMany({ where: { id: { in: ids } } });
+          }
           const totalAmount = body.totalAmount ?? serviceType.defaultPrice;
           const discountAmount = body.discountAmount ?? 0;
           const finalAmount = Math.max(0, totalAmount - discountAmount);
