@@ -32,7 +32,16 @@ import {
   ChevronRight,
   TrendingDown,
   Lock,
+  MoreVertical,
+  Trash2,
+  CheckCircle,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -460,6 +469,31 @@ export default function FinanceiroPage() {
     }
   }
 
+  async function deletePayment(id: string) {
+    if (!confirm("Excluir este pagamento? Esta ação não pode ser desfeita.")) return;
+    const res = await fetch(`/api/payments/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast({ title: "Pagamento excluído.", variant: "success" });
+      fetchData();
+    } else {
+      toast({ title: "Erro ao excluir pagamento.", variant: "error" });
+    }
+  }
+
+  async function markPaymentPaid(id: string) {
+    const res = await fetch(`/api/payments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "PAID" }),
+    });
+    if (res.ok) {
+      toast({ title: "Pagamento marcado como pago!", variant: "success" });
+      fetchData();
+    } else {
+      toast({ title: "Erro ao atualizar pagamento.", variant: "error" });
+    }
+  }
+
   async function markInstallment(id: string, status: string) {
     const res = await fetch(`/api/installments/${id}`, {
       method: "PUT",
@@ -751,6 +785,23 @@ export default function FinanceiroPage() {
                             ? "Pendente"
                             : "Parcial"}
                         </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#555] hover:text-white">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {p.status !== "PAID" && (
+                              <DropdownMenuItem onClick={() => markPaymentPaid(p.id)} className="gap-2 text-[#22c55e]">
+                                <CheckCircle className="h-4 w-4" /> Marcar como Pago
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => deletePayment(p.id)} className="gap-2 text-[#ef4444]">
+                              <Trash2 className="h-4 w-4" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                     {p.installments.length > 0 && (
