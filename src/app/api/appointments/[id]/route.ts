@@ -68,6 +68,8 @@ export async function PUT(
           const totalAmount = body.totalAmount ?? serviceType.defaultPrice;
           const discountAmount = body.discountAmount ?? 0;
           const finalAmount = Math.max(0, totalAmount - discountAmount);
+          const installmentCount = Math.max(1, body.installmentCount || 1);
+          const modality = installmentCount > 1 ? "PARCELADO" : "AVISTA";
           const payment = await prisma.payment.create({
             data: {
               tenantId,
@@ -79,24 +81,28 @@ export async function PUT(
               totalAmount,
               discountAmount,
               finalAmount,
-              modality: "AVISTA",
-              installmentCount: 1,
+              modality,
+              installmentCount,
               paymentMethod: body.paymentMethod || "Pix",
-              status: "PAID",
+              status: installmentCount > 1 ? "PARTIALLY_PAID" : "PAID",
             },
           });
-          await prisma.installment.create({
-            data: {
-              paymentId: payment.id,
-              tenantId,
-              installmentNumber: 1,
-              amount: finalAmount,
-              dueDate: new Date(),
-              status: "PAID",
-              paidAt: new Date(),
-            },
-          });
-        }
+          const installmentAmount = parseFloat((finalAmount / installmentCount).toFixed(2));
+          for (let i = 1; i <= installmentCount; i++) {
+            const dueDate = new Date();
+            dueDate.setMonth(dueDate.getMonth() + (i - 1));
+            await prisma.installment.create({
+              data: {
+                paymentId: payment.id,
+                tenantId,
+                installmentNumber: i,
+                amount: installmentAmount,
+                dueDate,
+                status: i === 1 ? "PAID" : "PENDING",
+                paidAt: i === 1 ? new Date() : null,
+              },
+            });
+          }
       }
     }
 

@@ -212,6 +212,7 @@ export default function AgendamentosPage() {
   const [completeAmount, setCompleteAmount] = useState("");
   const [completeDiscount, setCompleteDiscount] = useState("0");
   const [completeNotes, setCompleteNotes] = useState("");
+  const [completeInstallments, setCompleteInstallments] = useState("1");
   const [completeLoading, setCompleteLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<{ id: string; name: string; defaultPrice: number }[]>([]);
 
@@ -376,6 +377,7 @@ export default function AgendamentosPage() {
     setCompleteAmount("");
     setCompleteDiscount("0");
     setCompleteNotes("");
+    setCompleteInstallments("1");
   }
 
   async function handleComplete() {
@@ -392,6 +394,7 @@ export default function AgendamentosPage() {
           totalAmount: parseFloat(completeAmount) || undefined,
           discountAmount: parseFloat(completeDiscount) || 0,
           notes: completeNotes || undefined,
+          installmentCount: parseInt(completeInstallments) || 1,
         }),
       });
       if (res.ok) {
@@ -546,6 +549,29 @@ export default function AgendamentosPage() {
                     <SelectItem value="Transferência">Transferência</SelectItem>
                   </SelectContent>
                 </Select>
+                {completePaymentMethod === "Cartão de crédito" && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-[#555] uppercase tracking-wide">Parcelas</label>
+                    <Select value={completeInstallments} onValueChange={setCompleteInstallments}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => {
+                          const val = parseFloat(completeAmount) || 0;
+                          const disc = parseFloat(completeDiscount) || 0;
+                          const final = Math.max(0, val - disc);
+                          const parcel = n > 1 ? ` — R$ ${(final / n).toFixed(2).replace(".", ",")} cada` : " — à vista";
+                          return (
+                            <SelectItem key={n} value={String(n)}>
+                              {n}x{parcel}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Input
                   value={completeNotes}
                   onChange={(e) => setCompleteNotes(e.target.value)}
