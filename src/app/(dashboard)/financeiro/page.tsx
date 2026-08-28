@@ -31,16 +31,9 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingDown,
-  MoreVertical,
   Trash2,
   CheckCircle,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const paymentMethodLabels: Record<string, string> = {
   PIX: "Pix",
@@ -171,7 +164,6 @@ function MonthlyChart({
           <span className="text-[11px] text-[#666]">Despesas</span>
         </div>
       </div>
-      )}
     </div>
   );
 }
@@ -728,23 +720,16 @@ export default function FinanceiroPage() {
                             ? "Pendente"
                             : "Parcial"}
                         </Badge>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#555] hover:text-white">
-                              <MoreVertical className="h-4 w-4" />
+                        <div className="flex items-center gap-1">
+                          {p.status !== "PAID" && (
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-[#22c55e] hover:text-[#22c55e]" onClick={() => markPaymentPaid(p.id)}>
+                              <CheckCircle className="h-3.5 w-3.5 mr-1" />Pago
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {p.status !== "PAID" && (
-                              <DropdownMenuItem onClick={() => markPaymentPaid(p.id)} className="gap-2 text-[#22c55e]">
-                                <CheckCircle className="h-4 w-4" /> Marcar como Pago
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => deletePayment(p.id)} className="gap-2 text-[#ef4444]">
-                              <Trash2 className="h-4 w-4" /> Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          )}
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-[#ef4444] hover:text-[#ef4444]" onClick={() => deletePayment(p.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     {p.installments.length > 0 && (
