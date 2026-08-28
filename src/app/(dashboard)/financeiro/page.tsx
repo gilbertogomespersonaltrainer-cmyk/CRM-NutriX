@@ -115,10 +115,8 @@ const CHART_COLORS = ["#22c55e", "#16a34a", "#4ade80", "#6ee7b7", "#a7f3d0"];
 
 function MonthlyChart({
   data,
-  isPro,
 }: {
   data: ChartData["monthly"] | undefined;
-  isPro: boolean;
 }) {
   if (!data) {
     return (
@@ -136,57 +134,43 @@ function MonthlyChart({
     );
   }
 
-  const maxVal = Math.max(
-    ...data.flatMap((d) => (isPro ? [d.receita, d.despesas] : [d.receita])),
-    1
-  );
+  const maxVal = Math.max(...data.flatMap((d) => [d.receita, d.despesas]), 1);
 
   return (
     <div className="space-y-3">
       <div className="flex items-end gap-2 h-[130px]">
         {data.map((d, i) => {
-          const rH = Math.max(
-            Math.round((d.receita / maxVal) * 100),
-            d.receita > 0 ? 3 : 0
-          );
-          const eH = isPro
-            ? Math.max(Math.round((d.despesas / maxVal) * 100), d.despesas > 0 ? 3 : 0)
-            : 0;
+          const rH = Math.max(Math.round((d.receita / maxVal) * 100), d.receita > 0 ? 3 : 0);
+          const eH = Math.max(Math.round((d.despesas / maxVal) * 100), d.despesas > 0 ? 3 : 0);
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
               <div className="w-full flex items-end justify-center gap-0.5 flex-1">
                 <div
-                  className={cn(
-                    "rounded-t-sm bg-[#22c55e]/80 transition-all duration-500",
-                    isPro ? "flex-1" : "w-full"
-                  )}
+                  className="flex-1 rounded-t-sm bg-[#22c55e]/80 transition-all duration-500"
                   style={{ height: `${rH}%` }}
                   title={`Receita: ${formatCurrency(d.receita)}`}
                 />
-                {isPro && (
-                  <div
-                    className="flex-1 rounded-t-sm bg-[#ef4444]/60 transition-all duration-500"
-                    style={{ height: `${eH}%` }}
-                    title={`Despesas: ${formatCurrency(d.despesas)}`}
-                  />
-                )}
+                <div
+                  className="flex-1 rounded-t-sm bg-[#ef4444]/60 transition-all duration-500"
+                  style={{ height: `${eH}%` }}
+                  title={`Despesas: ${formatCurrency(d.despesas)}`}
+                />
               </div>
               <span className="text-[10px] text-[#555] capitalize">{d.month}</span>
             </div>
           );
         })}
       </div>
-      {isPro && (
-        <div className="flex items-center gap-5 justify-center pt-1">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm bg-[#22c55e]/80" />
-            <span className="text-[11px] text-[#666]">Receita</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm bg-[#ef4444]/60" />
-            <span className="text-[11px] text-[#666]">Despesas</span>
-          </div>
+      <div className="flex items-center gap-5 justify-center pt-1">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-sm bg-[#22c55e]/80" />
+          <span className="text-[11px] text-[#666]">Receita</span>
         </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-sm bg-[#ef4444]/60" />
+          <span className="text-[11px] text-[#666]">Despesas</span>
+        </div>
+      </div>
       )}
     </div>
   );
@@ -631,17 +615,10 @@ export default function FinanceiroPage() {
               <p className="text-sm font-semibold text-white">
                 Evolução dos Últimos 6 Meses
               </p>
-              <p className="text-xs text-[#555] mt-0.5">
-                {isPro ? "Receita e despesas por mês" : "Receita mensal"}
-              </p>
+              <p className="text-xs text-[#555] mt-0.5">Receita e despesas por mês</p>
             </div>
-            {!isPro && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#22c55e]/10 text-[#4ade80] border border-[#22c55e]/20 flex-shrink-0">
-                Essential
-              </span>
-            )}
           </div>
-          <MonthlyChart data={chartData?.monthly} isPro={true} />
+          <MonthlyChart data={chartData?.monthly} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
