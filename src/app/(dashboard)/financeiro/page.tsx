@@ -91,6 +91,13 @@ type ChartData = {
   byMethod: Record<string, number>;
 };
 
+type ConsultorioCharts = {
+  newPatientsPerMonth: { month: string; count: number }[];
+  attendancePerMonth: { month: string; compareceu: number; faltou: number; total: number }[];
+  stageDistribution: { label: string; count: number }[];
+  avgTicketPerMonth: { month: string; avg: number }[];
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -318,6 +325,7 @@ export default function FinanceiroPage() {
   const [showNewExpense, setShowNewExpense] = useState(false);
   const [saving, setSaving] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [consultorioCharts, setConsultorioCharts] = useState<ConsultorioCharts | null>(null);
 
   const [payForm, setPayForm] = useState({
     patientId: "",
@@ -341,13 +349,15 @@ export default function FinanceiroPage() {
     const month = currentMonth.getMonth() + 1;
     const year = currentMonth.getFullYear();
 
-    const [pRes, tRes] = await Promise.all([
+    const [pRes, tRes, cRes] = await Promise.all([
       fetch("/api/payments"),
       fetch(`/api/transactions?month=${month}&year=${year}`),
+      fetch("/api/charts"),
     ]);
 
     setPayments(await pRes.json());
     setTransactions(await tRes.json());
+    if (cRes.ok) setConsultorioCharts(await cRes.json());
     setLoading(false);
   }, [currentMonth]);
 
@@ -627,6 +637,125 @@ export default function FinanceiroPage() {
               <HorizontalBars data={chartData?.byMethod} />
             </div>
           </div>
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Gráficos do Consultório                                             */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="space-y-4">
+        <p className="text-xs font-bold text-[#555] uppercase tracking-wider">Visão do Consultório</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Novos Pacientes por Mês */}
+          <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl p-5">
+            <p className="text-sm font-semibold text-white mb-1">Novos Pacientes por Mês</p>
+            <p className="text-xs text-[#555] mb-4">Últimos 6 meses</p>
+            {consultorioCharts ? (
+              <div className="flex items-end gap-2 h-[110px]">
+                {consultorioCharts.newPatientsPerMonth.map((d, i) => {
+                  const max = Math.max(...consultorioCharts.newPatientsPerMonth.map(x => x.count), 1);
+                  const h = Math.max(Math.round((d.count / max) * 100), d.count > 0 ? 6 : 0);
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                      <span className="text-[10px] text-[#22c55e] font-medium">{d.count > 0 ? d.count : ""}</span>
+                      <div className="w-full flex items-end flex-1">
+                        <div className="w-full rounded-t-sm bg-[#22c55e]/70 transition-all duration-500" style={{ height: `${h}%` }} title={`${d.count} pacientes`} />
+                      </div>
+                      <span className="text-[10px] text-[#555]">{d.month}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : <div className="h-[110px] flex items-center justify-center"><div className="w-5 h-5 border-2 border-[#22c55e] border-t-transparent rounded-full animate-spin" /></div>}
+          </div>
+
+          {/* Ticket Médio por Mês */}
+          <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl p-5">
+            <p className="text-sm font-semibold text-white mb-1">Ticket Médio por Consulta</p>
+            <p className="text-xs text-[#555] mb-4">Últimos 6 meses</p>
+            {consultorioCharts ? (
+              <div className="flex items-end gap-2 h-[110px]">
+                {consultorioCharts.avgTicketPerMonth.map((d, i) => {
+                  const max = Math.max(...consultorioCharts.avgTicketPerMonth.map(x => x.avg), 1);
+                  const h = Math.max(Math.round((d.avg / max) * 100), d.avg > 0 ? 6 : 0);
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                      <span className="text-[10px] text-[#a78bfa] font-medium">{d.avg > 0 ? `R$${d.avg.toFixed(0)}` : ""}</span>
+                      <div className="w-full flex items-end flex-1">
+                        <div className="w-full rounded-t-sm bg-[#a78bfa]/70 transition-all duration-500" style={{ height: `${h}%` }} title={`R$ ${d.avg.toFixed(2)}`} />
+                      </div>
+                      <span className="text-[10px] text-[#555]">{d.month}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : <div className="h-[110px] flex items-center justify-center"><div className="w-5 h-5 border-2 border-[#22c55e] border-t-transparent rounded-full animate-spin" /></div>}
+          </div>
+
+          {/* Comparecimento vs Faltas */}
+          <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl p-5">
+            <p className="text-sm font-semibold text-white mb-1">Comparecimento vs Faltas</p>
+            <p className="text-xs text-[#555] mb-4">Últimos 6 meses</p>
+            {consultorioCharts ? (
+              <div className="space-y-3">
+                <div className="flex items-end gap-2 h-[90px]">
+                  {consultorioCharts.attendancePerMonth.map((d, i) => {
+                    const max = Math.max(...consultorioCharts.attendancePerMonth.map(x => x.total), 1);
+                    const cH = Math.max(Math.round((d.compareceu / max) * 100), d.compareceu > 0 ? 6 : 0);
+                    const fH = Math.max(Math.round((d.faltou / max) * 100), d.faltou > 0 ? 6 : 0);
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                        <div className="w-full flex items-end justify-center gap-0.5 flex-1">
+                          <div className="flex-1 rounded-t-sm bg-[#22c55e]/80" style={{ height: `${cH}%` }} title={`Compareceu: ${d.compareceu}`} />
+                          <div className="flex-1 rounded-t-sm bg-[#ef4444]/60" style={{ height: `${fH}%` }} title={`Faltou: ${d.faltou}`} />
+                        </div>
+                        <span className="text-[10px] text-[#555]">{d.month}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-5 justify-center">
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-[#22c55e]/80" /><span className="text-[11px] text-[#666]">Compareceu</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-[#ef4444]/60" /><span className="text-[11px] text-[#666]">Faltou/Cancelou</span></div>
+                </div>
+              </div>
+            ) : <div className="h-[110px] flex items-center justify-center"><div className="w-5 h-5 border-2 border-[#22c55e] border-t-transparent rounded-full animate-spin" /></div>}
+          </div>
+
+          {/* Distribuição por Estágio */}
+          <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl p-5">
+            <p className="text-sm font-semibold text-white mb-1">Pacientes por Estágio</p>
+            <p className="text-xs text-[#555] mb-4">Distribuição atual</p>
+            {consultorioCharts ? (
+              <div className="space-y-2.5">
+                {consultorioCharts.stageDistribution
+                  .filter(s => s.count > 0)
+                  .sort((a, b) => b.count - a.count)
+                  .map((s) => {
+                    const total = consultorioCharts.stageDistribution.reduce((acc, x) => acc + x.count, 0);
+                    const pct = total > 0 ? Math.round((s.count / total) * 100) : 0;
+                    const colors: Record<string, string> = {
+                      "Ativo": "bg-[#22c55e]/80",
+                      "1ª Consulta": "bg-[#3b82f6]/80",
+                      "Inativo": "bg-[#ef4444]/60",
+                      "Reativado": "bg-[#a78bfa]/80",
+                      "Lead": "bg-[#f59e0b]/80",
+                    };
+                    return (
+                      <div key={s.label}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-[#aaa]">{s.label}</span>
+                          <span className="text-xs text-[#666]">{s.count} ({pct}%)</span>
+                        </div>
+                        <div className="w-full h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-500 ${colors[s.label] ?? "bg-[#555]/80"}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            ) : <div className="h-[110px] flex items-center justify-center"><div className="w-5 h-5 border-2 border-[#22c55e] border-t-transparent rounded-full animate-spin" /></div>}
+          </div>
+        </div>
       </div>
 
       {/* ------------------------------------------------------------------ */}
