@@ -828,6 +828,41 @@ export default function ConfiguracoesPage() {
               label: "🎂 Aniversário",
               default: "Olá {nome_paciente}! 🎉 Hoje é um dia especial — feliz aniversário! Desejo que este novo ciclo seja repleto de saúde, alegria e conquistas. Um abraço carinhoso de {nome_nutricionista}! 🎂",
             },
+            {
+              type: "REMINDER_2H",
+              label: "🔔 Lembrete 2h Antes",
+              default: "Oi {nome_paciente}! Daqui a pouquinho a gente se encontra, hein? Às {hora_consulta} te espero 😊 Se precisar de algo antes, é só me chamar!",
+            },
+            {
+              type: "POST_CONSULTATION",
+              label: "🌱 Pós-Consulta",
+              default: "Oi {nome_paciente}! Como você tá? Queria saber como foi esses primeiros dias depois da nossa conversa. Tá conseguindo encaixar as mudanças na rotina? Pode me contar sem medo, tô aqui pra te ajudar no que precisar 😊",
+            },
+            {
+              type: "REACTIVATION_30",
+              label: "🔁 Reativação 30 dias",
+              default: "Oi {nome_paciente}, tudo bem? Aqui é a {nome_nutricionista}. Faz um tempinho que a gente não se fala e eu lembrei de você! Como você tá? Tá conseguindo se cuidar? Me conta como andam as coisas 😊",
+            },
+            {
+              type: "REACTIVATION_60",
+              label: "🔁 Reativação 60 dias",
+              default: "Oi {nome_paciente}! Tudo bem com você? Eu tava aqui organizando minha agenda e lembrei de você. Espero que esteja bem! Como tá a rotina? Tô com saudade das nossas conversas 😊 Me dá um oi quando puder!",
+            },
+            {
+              type: "REACTIVATION_90",
+              label: "🔁 Reativação 90 dias",
+              default: "Oi {nome_paciente}, quanto tempo! Tudo bem com você? Tava pensando em você esses dias e queria muito saber como você tá. A gente construiu tanta coisa junta e eu fico torcendo pra você estar bem! Se quiser conversar, tô por aqui 💚",
+            },
+            {
+              type: "WELCOME",
+              label: "👋 Boas-vindas",
+              default: "Oi {nome_paciente}! Que bom ter você aqui 😊 Sou a {nome_nutricionista} e vou te acompanhar nessa jornada. Pode contar comigo pra qualquer dúvida, tá? Seja bem-vindo(a)! 💚",
+            },
+            {
+              type: "PLAN_RENEWAL",
+              label: "🔄 Renovação de Plano",
+              default: "Oi {nome_paciente}, tudo bem? Passando pra te avisar que seu plano tá chegando ao fim. Queria conversar com você sobre como foi até aqui e o que a gente pode fazer daqui pra frente. Posso te ligar ou prefere que a gente converse por aqui? 😊",
+            },
           ].map((tmpl) => {
             const existing = templates.find((t) => t.type === tmpl.type);
             return (
