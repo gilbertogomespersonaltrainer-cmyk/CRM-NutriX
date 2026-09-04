@@ -72,15 +72,23 @@ const MODALITY_LABELS: Record<string, string> = {
   AVISTA: "À Vista", PARCELADO: "Parcelado",
 };
 
+const MONTHS = [
+  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+];
+
+function monthRangeToDateRange(year: number, month: number) {
+  const lastDay = new Date(year, month, 0).getDate();
+  const m = String(month).padStart(2, "0");
+  return {
+    start: `${year}-${m}-01`,
+    end: `${year}-${m}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
 function getCurrentMonthRange() {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
-  return {
-    start: `${y}-${m}-01`,
-    end: `${y}-${m}-${String(lastDay).padStart(2, "0")}`,
-  };
+  return monthRangeToDateRange(now.getFullYear(), now.getMonth() + 1);
 }
 
 // ─── CSV / XML export ──────────────────────────────────────────────────────────
@@ -124,13 +132,22 @@ export default function RelatoriosPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [startMonth, setStartMonth] = useState(0);
+  const [startYear, setStartYear] = useState(0);
+  const [endMonth, setEndMonth] = useState(0);
+  const [endYear, setEndYear] = useState(0);
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Inicializa datas apenas no cliente, após hidratação
   useEffect(() => {
-    const range = getCurrentMonthRange();
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const y = now.getFullYear();
+    setStartMonth(m); setStartYear(y);
+    setEndMonth(m); setEndYear(y);
+    const range = monthRangeToDateRange(y, m);
     setStartDate(range.start);
     setEndDate(range.end);
     setMounted(true);
@@ -266,32 +283,84 @@ export default function RelatoriosPage() {
           <Calendar className="h-3.5 w-3.5 text-[#666]" />
           <span className="text-xs text-[#666]">De</span>
           {mounted ? (
-            <input
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              className="bg-transparent text-white text-sm outline-none cursor-pointer"
-            />
+            <>
+              <select
+                value={startMonth}
+                onChange={e => {
+                  const m = Number(e.target.value);
+                  setStartMonth(m);
+                  setStartDate(monthRangeToDateRange(startYear, m).start);
+                }}
+                className="bg-transparent text-white text-sm outline-none cursor-pointer"
+              >
+                {MONTHS.map((name, i) => <option key={i} value={i + 1} className="bg-[#111]">{name}</option>)}
+              </select>
+              <select
+                value={startYear}
+                onChange={e => {
+                  const y = Number(e.target.value);
+                  setStartYear(y);
+                  setStartDate(monthRangeToDateRange(y, startMonth).start);
+                }}
+                className="bg-transparent text-white text-sm outline-none cursor-pointer"
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map(y => (
+                  <option key={y} value={y} className="bg-[#111]">{y}</option>
+                ))}
+              </select>
+            </>
           ) : (
-            <span className="text-white text-sm w-28 h-5 bg-[#1e1e1e] rounded animate-pulse" />
+            <span className="text-white text-sm w-36 h-5 bg-[#1e1e1e] rounded animate-pulse" />
           )}
-          <span className="text-xs text-[#666]">até</span>
+          <span className="text-xs text-[#666] mx-1">até</span>
           {mounted ? (
-            <input
-              type="date"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
-              className="bg-transparent text-white text-sm outline-none cursor-pointer"
-            />
+            <>
+              <select
+                value={endMonth}
+                onChange={e => {
+                  const m = Number(e.target.value);
+                  setEndMonth(m);
+                  setEndDate(monthRangeToDateRange(endYear, m).end);
+                }}
+                className="bg-transparent text-white text-sm outline-none cursor-pointer"
+              >
+                {MONTHS.map((name, i) => <option key={i} value={i + 1} className="bg-[#111]">{name}</option>)}
+              </select>
+              <select
+                value={endYear}
+                onChange={e => {
+                  const y = Number(e.target.value);
+                  setEndYear(y);
+                  setEndDate(monthRangeToDateRange(y, endMonth).end);
+                }}
+                className="bg-transparent text-white text-sm outline-none cursor-pointer"
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map(y => (
+                  <option key={y} value={y} className="bg-[#111]">{y}</option>
+                ))}
+              </select>
+            </>
           ) : (
-            <span className="text-white text-sm w-28 h-5 bg-[#1e1e1e] rounded animate-pulse" />
+            <span className="text-white text-sm w-36 h-5 bg-[#1e1e1e] rounded animate-pulse" />
           )}
         </div>
         <div className="flex gap-1">
           {[
-            { label: "Este mês", fn: () => { const r = getCurrentMonthRange(); setStartDate(r.start); setEndDate(r.end); } },
-            { label: "Mês anterior", fn: () => { const n = new Date(); const y = n.getMonth() === 0 ? n.getFullYear() - 1 : n.getFullYear(); const m = n.getMonth() === 0 ? 12 : n.getMonth(); const last = new Date(y, m, 0).getDate(); setStartDate(`${y}-${String(m).padStart(2, "0")}-01`); setEndDate(`${y}-${String(m).padStart(2, "0")}-${last}`); } },
-            { label: "Este ano", fn: () => { const y = new Date().getFullYear(); setStartDate(`${y}-01-01`); setEndDate(`${y}-12-31`); } },
+            { label: "Este mês", fn: () => {
+              const now = new Date(); const m = now.getMonth() + 1; const y = now.getFullYear();
+              setStartMonth(m); setStartYear(y); setEndMonth(m); setEndYear(y);
+              const r = monthRangeToDateRange(y, m); setStartDate(r.start); setEndDate(r.end);
+            }},
+            { label: "Mês anterior", fn: () => {
+              const now = new Date(); const m = now.getMonth() === 0 ? 12 : now.getMonth(); const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+              setStartMonth(m); setStartYear(y); setEndMonth(m); setEndYear(y);
+              const r = monthRangeToDateRange(y, m); setStartDate(r.start); setEndDate(r.end);
+            }},
+            { label: "Este ano", fn: () => {
+              const y = new Date().getFullYear();
+              setStartMonth(1); setStartYear(y); setEndMonth(12); setEndYear(y);
+              setStartDate(`${y}-01-01`); setEndDate(`${y}-12-31`);
+            }},
           ].map(({ label, fn }) => (
             <button key={label} onClick={fn} className="text-xs px-3 py-1.5 rounded-lg bg-[#111] border border-[#1e1e1e] text-[#666] hover:text-white hover:border-[#333] transition-all">
               {label}
