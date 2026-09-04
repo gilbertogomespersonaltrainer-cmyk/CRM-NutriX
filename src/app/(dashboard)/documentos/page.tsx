@@ -340,7 +340,7 @@ export default function DocumentosPage() {
                   </h1>
                   {profissional && (
                     <p style={{ fontSize: "14px", color: "#555", margin: "4px 0 0", fontFamily: "sans-serif" }}>
-                      {profissional}{crn ? ` · CRN: ${crn}` : ""}
+                      {profissional}{crn ? ` · ${crn}` : ""}
                     </p>
                   )}
                   {settings?.phone && (
@@ -408,7 +408,7 @@ export default function DocumentosPage() {
                   <div style={{ borderTop: "1px solid #ccc", width: "220px" }} />
                 )}
                 <p style={{ fontSize: "13px", color: "#333", marginTop: signature ? "4px" : "8px", fontFamily: "sans-serif" }}>
-                  {profissional || "Profissional"}{crn ? ` — CRN: ${crn}` : ""}
+                  {profissional || "Profissional"}{crn ? ` — ${crn}` : ""}
                 </p>
                 <p style={{ fontSize: "12px", color: "#888", fontFamily: "sans-serif" }}>Nutricionista</p>
               </div>
