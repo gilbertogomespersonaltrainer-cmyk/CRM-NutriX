@@ -16,6 +16,17 @@ export async function DELETE(
     }
 
     await prisma.installment.deleteMany({ where: { paymentId: id } });
+
+    // Exclui Transaction de receita associada (mesma descrição e valor, criada junto ao pagamento)
+    await prisma.transaction.deleteMany({
+      where: {
+        tenantId,
+        type: "INCOME",
+        amount: payment.finalAmount,
+        description: `Pagamento - ${payment.description}`,
+      },
+    });
+
     await prisma.payment.delete({ where: { id } });
 
     return NextResponse.json({ success: true });

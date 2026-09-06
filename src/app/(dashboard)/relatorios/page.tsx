@@ -64,8 +64,14 @@ type ReportData = FinancialData | DefaultersData | AppointmentsData | PatientsDa
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  // Códigos do formulário de Financeiro
   PIX: "Pix", DINHEIRO: "Dinheiro", CARTAO_CREDITO: "Cartão de Crédito",
   CARTAO_DEBITO: "Cartão de Débito", TRANSFERENCIA: "Transferência", OUTRO: "Outro",
+  // Valores em PT usados pelo modal de conclusão de consulta
+  "Pix": "Pix", "Dinheiro": "Dinheiro", "Cartão de crédito": "Cartão de Crédito",
+  "Cartão de débito": "Cartão de Débito", "Transferência": "Transferência",
+  // Códigos ingleses do enum antigo
+  CREDIT_CARD: "Cartão de Crédito", DEBIT_CARD: "Cartão de Débito", CASH: "Dinheiro", TRANSFER: "Transferência",
 };
 
 const MODALITY_LABELS: Record<string, string> = {

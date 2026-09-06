@@ -74,15 +74,11 @@ const TEMPLATE_DEFAULTS: Record<string, string> = {
   PLAN_RENEWAL:      "Oi {nome_paciente}, tudo bem? Passando pra te avisar que seu plano tá chegando ao fim. Queria conversar com você sobre como foi até aqui e o que a gente pode fazer daqui pra frente. Posso te ligar ou prefere que a gente converse por aqui? 😊",
 };
 
-// All available variables
+// Variáveis disponíveis no broadcast — apenas as que são substituídas para cada paciente
 const VARIABLES = [
   { key: "{nome_paciente}",      label: "Nome do paciente" },
   { key: "{nome_nutricionista}", label: "Seu nome" },
   { key: "{nome_clinica}",       label: "Nome da clínica" },
-  { key: "{data_consulta}",      label: "Data da consulta" },
-  { key: "{hora_consulta}",      label: "Hora da consulta" },
-  { key: "{tipo_consulta}",           label: "Tipo de consulta" },
-  { key: "{modalidade_consulta}",     label: "Modalidade (Presencial/Online)" },
 ];
 
 export default function MensagensPage() {
