@@ -174,7 +174,17 @@ export default function DashboardPage() {
                         </p>
                       </div>
                     </div>
-                    <Badge variant="active">Agendada</Badge>
+                    <Badge variant={
+                      apt.status === "COMPLETED" ? "active" :
+                      apt.status === "CANCELLED" ? "inactive" :
+                      apt.status === "NO_SHOW" ? "inactive" :
+                      "active"
+                    }>
+                      {apt.status === "COMPLETED" ? "Realizada" :
+                       apt.status === "CANCELLED" ? "Cancelada" :
+                       apt.status === "NO_SHOW" ? "Falta" :
+                       "Agendada"}
+                    </Badge>
                   </div>
                 ))}
               </div>

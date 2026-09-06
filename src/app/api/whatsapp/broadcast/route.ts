@@ -4,7 +4,7 @@ import { getTenantId } from "@/lib/session";
 import { evoSendText } from "@/lib/evolution";
 import { replaceTemplateVars } from "@/lib/templates";
 
-const DELAY_MS = 1500; // 1.5s entre cada mensagem para evitar banimento
+const DELAY_MS = 800; // 0.8s entre cada mensagem — equilibra segurança e timeout serverless
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

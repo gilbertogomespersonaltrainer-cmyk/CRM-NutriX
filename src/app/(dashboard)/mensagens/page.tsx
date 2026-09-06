@@ -508,6 +508,11 @@ export default function MensagensPage() {
             {selectedIds.size === 0 && (
               <p className="text-xs text-[#555] text-center">Selecione ao menos um paciente</p>
             )}
+            {selectedIds.size > 40 && (
+              <p className="text-xs text-yellow-500/80 text-center">
+                Muitos pacientes selecionados ({selectedIds.size}). Recomendamos enviar em grupos de até 40 para evitar falhas.
+              </p>
+            )}
           </div>
 
           {/* Result card */}
