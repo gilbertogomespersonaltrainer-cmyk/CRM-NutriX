@@ -459,6 +459,7 @@ function PacientesContent() {
     address: "",
     howFoundUs: "",
     notes: "",
+    stage: "ACTIVE",
   });
 
   const fetchPatients = useCallback(async () => {
@@ -493,7 +494,7 @@ function PacientesContent() {
       if (res.ok) {
         toast({ title: "Paciente cadastrado!", variant: "success" });
         setShowNew(false);
-        setForm({ name: "", cpf: "", birthDate: "", phone: "", email: "", address: "", howFoundUs: "", notes: "" });
+        setForm({ name: "", cpf: "", birthDate: "", phone: "", email: "", address: "", howFoundUs: "", notes: "", stage: "ACTIVE" });
         fetchPatients();
       } else {
         toast({ title: "Erro ao cadastrar", variant: "error" });
@@ -665,6 +666,28 @@ function PacientesContent() {
             <div className="space-y-2">
               <Label>Endereço</Label>
               <Input name="address" value={form.address} onChange={handleChange} />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de cadastro</Label>
+              <div className="flex gap-2">
+                {[{ value: "ACTIVE", label: "Paciente" }, { value: "LEAD", label: "Lead (interesse)" }].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, stage: opt.value }))}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all ${
+                      form.stage === opt.value
+                        ? "bg-[#22c55e]/10 border-[#22c55e]/40 text-[#4ade80]"
+                        : "bg-[#0d0d0d] border-[#1e1e1e] text-[#666] hover:border-[#333] hover:text-[#aaa]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {form.stage === "LEAD" && (
+                <p className="text-[11px] text-[#555]">Lead aparece apenas no Pipeline, não na lista de Pacientes.</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Observações</Label>

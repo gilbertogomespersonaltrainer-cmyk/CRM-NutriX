@@ -73,7 +73,7 @@ export async function GET(req: Request) {
         where: {
           tenantId,
           status: { in: ["PENDING", "OVERDUE"] },
-          dueDate: { lte: new Date() },
+          dueDate: { lte: new Date(), gte: start },
         },
         include: {
           payment: {
