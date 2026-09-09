@@ -460,7 +460,9 @@ function PacientesContent() {
     howFoundUs: "",
     notes: "",
     stage: "ACTIVE",
+    tags: [] as string[],
   });
+  const [tagInput, setTagInput] = useState("");
 
   const fetchPatients = useCallback(async () => {
     const params = new URLSearchParams();
@@ -494,7 +496,8 @@ function PacientesContent() {
       if (res.ok) {
         toast({ title: "Paciente cadastrado!", variant: "success" });
         setShowNew(false);
-        setForm({ name: "", cpf: "", birthDate: "", phone: "", email: "", address: "", howFoundUs: "", notes: "", stage: "ACTIVE" });
+        setForm({ name: "", cpf: "", birthDate: "", phone: "", email: "", address: "", howFoundUs: "", notes: "", stage: "ACTIVE", tags: [] });
+        setTagInput("");
         fetchPatients();
       } else {
         toast({ title: "Erro ao cadastrar", variant: "error" });
@@ -687,6 +690,34 @@ function PacientesContent() {
               </div>
               {form.stage === "LEAD" && (
                 <p className="text-[11px] text-[#555]">Lead aparece apenas no Pipeline, não na lista de Pacientes.</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
+                      e.preventDefault();
+                      const t = tagInput.trim().replace(/,$/, "");
+                      if (t && !form.tags.includes(t)) setForm(f => ({ ...f, tags: [...f.tags, t] }));
+                      setTagInput("");
+                    }
+                  }}
+                  placeholder="Digite e pressione Enter..."
+                />
+              </div>
+              {form.tags.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap mt-1">
+                  {form.tags.map(t => (
+                    <span key={t} className="flex items-center gap-1 bg-[#22c55e]/10 border border-[#22c55e]/25 text-[#4ade80] text-xs px-2 py-0.5 rounded-full">
+                      {t}
+                      <button type="button" onClick={() => setForm(f => ({ ...f, tags: f.tags.filter(x => x !== t) }))} className="hover:text-white">×</button>
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
             <div className="space-y-2">

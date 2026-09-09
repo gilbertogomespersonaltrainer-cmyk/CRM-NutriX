@@ -10,13 +10,17 @@ import { Loader2, Save, MessageSquare, Check } from "lucide-react";
 type Settings = {
   enabled: boolean;
   daysAfter: number;
+  dayOfWeek: number;
   message: string;
 };
+
+const DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default function PosConsultaPage() {
   const [settings, setSettings] = useState<Settings>({
     enabled: false,
     daysAfter: 3,
+    dayOfWeek: 1,
     message: "",
   });
   const [loading, setLoading] = useState(true);
@@ -26,7 +30,7 @@ export default function PosConsultaPage() {
   useEffect(() => {
     fetch("/api/pos-consulta")
       .then((r) => r.json())
-      .then((data) => setSettings({ enabled: data.enabled, daysAfter: data.daysAfter, message: data.message }))
+      .then((data) => setSettings({ enabled: data.enabled, daysAfter: data.daysAfter, dayOfWeek: data.dayOfWeek ?? 1, message: data.message }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -126,6 +130,31 @@ export default function PosConsultaPage() {
                 }`}
               >
                 {d} {d === 1 ? "dia" : "dias"}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dia da semana */}
+      <Card>
+        <CardContent className="p-6 space-y-3">
+          <h2 className="text-white font-semibold">Dia da semana para envio</h2>
+          <p className="text-sm text-[#666]">
+            Se o prazo cair em um fim de semana, a mensagem será enviada no dia escolhido mais próximo.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {DAYS.map((d, i) => (
+              <button
+                key={i}
+                onClick={() => setSettings(s => ({ ...s, dayOfWeek: i }))}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  settings.dayOfWeek === i
+                    ? "bg-[#22c55e]/15 border-[#22c55e]/40 text-[#4ade80]"
+                    : "bg-[#1a1a1a] border-[#2a2a2a] text-[#666] hover:text-white"
+                }`}
+              >
+                {d}
               </button>
             ))}
           </div>

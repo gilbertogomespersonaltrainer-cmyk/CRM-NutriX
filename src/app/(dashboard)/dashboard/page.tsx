@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCardIcon } from "@/components/ui/premium-icon";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
 
 type DashboardData = {
@@ -106,6 +106,21 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* WhatsApp Status */}
+      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm w-fit ${
+        data.whatsappStatus === "CONNECTED"
+          ? "bg-[#22c55e]/8 border-[#22c55e]/25 text-[#4ade80]"
+          : "bg-[#ef4444]/8 border-[#ef4444]/25 text-[#f87171]"
+      }`}>
+        {data.whatsappStatus === "CONNECTED"
+          ? <Wifi className="h-4 w-4" />
+          : <WifiOff className="h-4 w-4" />}
+        <span>WhatsApp: {data.whatsappStatus === "CONNECTED" ? "Conectado" : "Desconectado"}</span>
+        {data.whatsappStatus !== "CONNECTED" && (
+          <Link href="/configuracoes" className="ml-1 underline text-xs">Configurar</Link>
+        )}
       </div>
 
       {/* Quick Actions + Today's Appointments */}

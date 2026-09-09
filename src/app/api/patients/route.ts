@@ -56,6 +56,7 @@ export async function POST(req: Request) {
         address: body.address || null,
         howFoundUs: body.howFoundUs || null,
         notes: body.notes || null,
+        tags: Array.isArray(body.tags) ? body.tags : [],
         stage: body.stage === "LEAD" ? "LEAD" : "ACTIVE",
         isActive: body.stage !== "LEAD",
       },
