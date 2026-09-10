@@ -102,7 +102,8 @@ export async function POST(req: Request) {
   );
 
   // Pagamentos do mês atual
-  const paymentData = [
+  type PmtStatus = "PAID" | "PENDING" | "PARTIALLY_PAID";
+  const paymentData: { patientIdx: number; amount: number; status: PmtStatus }[] = [
     { patientIdx: 2, amount: 250, status: "PAID" },
     { patientIdx: 3, amount: 250, status: "PAID" },
     { patientIdx: 4, amount: 600, status: "PAID" },
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
           totalAmount: amount,
           discountAmount: 0,
           finalAmount: amount,
-          modality: "SINGLE",
+          modality: "AVISTA",
           paymentMethod: "PIX",
           installmentCount: 1,
           status,
