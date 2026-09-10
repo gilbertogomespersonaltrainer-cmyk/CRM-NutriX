@@ -74,7 +74,8 @@ export async function POST(req: Request) {
 
   // Agendamentos — alguns hoje, outros no passado
   const today = new Date();
-  const appts = [
+  type ApptStatus = "SCHEDULED" | "COMPLETED" | "NO_SHOW" | "CANCELLED";
+  const appts: { patientIdx: number; hoursOffset: number; status: ApptStatus }[] = [
     { patientIdx: 0, hoursOffset: 2, status: "SCHEDULED" },
     { patientIdx: 1, hoursOffset: 4, status: "SCHEDULED" },
     { patientIdx: 2, hoursOffset: -48, status: "COMPLETED" },
