@@ -28,10 +28,20 @@ export async function POST(req: Request) {
       crn: "CRN-3 12345",
       phone: "11999999999",
       clinicName: "Clínica NutriX Demo",
-      planId: plan?.id ?? "",
-      trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
     },
   });
+
+  if (plan) {
+    await prisma.subscription.create({
+      data: {
+        tenantId: tenant.id,
+        planId: plan.id,
+        status: "ACTIVE",
+        trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        startsAt: new Date(),
+      },
+    });
+  }
 
   // Tipos de serviço
   const [consultaAvulsa] = await prisma.$transaction([
